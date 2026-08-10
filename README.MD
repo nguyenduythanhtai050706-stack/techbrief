@@ -7,7 +7,7 @@ and presents a source-linked daily brief readable in 1–3 minutes.
 
 ## Current status
 
-Day 3 — PostgreSQL and Redis health checks plus the first sources API.
+Day 4 — RSS and Atom ingestion previews for registered sources.
 
 ## Stack
 
@@ -69,6 +69,9 @@ Available endpoints:
 - `GET /sources` returns sources ordered by newest first.
 - `POST /sources` accepts `{ "name": "...", "url": "https://..." }`.
   Duplicate URLs return `409 Conflict`.
+- `POST /ingestion/run` reads all registered RSS 2.0 or Atom sources and
+  returns normalized previews with per-source errors.
+  Previews are not saved; article persistence is the next day's work.
 
 Quick verification:
 
@@ -76,6 +79,7 @@ Quick verification:
 Invoke-RestMethod http://localhost:3000/health
 $body = @{ name = 'TechBrief Demo'; url = 'https://example.com/feed.xml' } | ConvertTo-Json
 Invoke-RestMethod http://localhost:3000/sources -Method Post -ContentType 'application/json' -Body $body
+Invoke-RestMethod http://localhost:3000/ingestion/run -Method Post
 Invoke-RestMethod http://localhost:3000/sources
 ```
 

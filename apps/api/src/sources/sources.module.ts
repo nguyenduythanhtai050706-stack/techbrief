@@ -7,5 +7,6 @@ import { SourcesService } from './sources.service';
   imports: [DatabaseModule],
   controllers: [SourcesController],
   providers: [SourcesService],
+  exports: [SourcesService],
 })
 export class SourcesModule {}
