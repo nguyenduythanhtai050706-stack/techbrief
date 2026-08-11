@@ -10,14 +10,22 @@ async function runMigration(): Promise<void> {
   });
 
   try {
-    const migrationPath = resolve(
-      process.cwd(),
-      'src/database/migrations/001_create_sources.sql',
-    );
-    const migration = await readFile(migrationPath, 'utf8');
+    const migrationFiles = [
+      '001_create_sources.sql',
+      '002_create_articles.sql',
+    ] as const;
 
-    await app.get(DatabaseService).query(migration);
-    console.log('Migration 001_create_sources completed.');
+    for (const fileName of migrationFiles) {
+      const migrationPath = resolve(
+        process.cwd(),
+        'src/database/migrations',
+        fileName,
+      );
+      const migration = await readFile(migrationPath, 'utf8');
+
+      await app.get(DatabaseService).query(migration);
+      console.log(`Migration ${fileName} completed.`);
+    }
   } finally {
     await app.close();
   }
