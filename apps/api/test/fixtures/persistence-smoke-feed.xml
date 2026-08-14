@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>TechBrief Persistence Smoke</title>
+    <link>http://127.0.0.1/</link>
+    <description>Local fixture for article persistence verification.</description>
+    <item>
+      <guid>{{ARTICLE_URL}}</guid>
+      <title>Local persistence smoke article</title>
+      <link>{{ARTICLE_URL}}</link>
+      <description><![CDATA[This detailed local fixture verifies that the same normalized RSS article can be stored twice without creating duplicate article or provenance rows in PostgreSQL.]]></description>
+    </item>
+  </channel>
+</rss>

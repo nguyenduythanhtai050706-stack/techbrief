@@ -7,7 +7,7 @@ and presents a source-linked daily brief readable in 1–3 minutes.
 
 ## Current status
 
-Day 4 — RSS and Atom ingestion previews for registered sources.
+Day 6 — RSS and Atom ingestion with idempotent PostgreSQL article persistence.
 
 ## Stack
 
@@ -58,8 +58,9 @@ pnpm --dir apps/api db:migrate
 pnpm --dir apps/api start:dev
 ```
 
-The migration is safe to run repeatedly. It creates the PostgreSQL `sources`
-table with a unique URL constraint.
+The migration is safe to run repeatedly. It creates the PostgreSQL `sources`,
+`articles`, and `article_sources` tables. Ingestion persists normalized previews
+and retains provenance without overwriting the first-seen article metadata.
 
 Available endpoints:
 
@@ -70,8 +71,17 @@ Available endpoints:
 - `POST /sources` accepts `{ "name": "...", "url": "https://..." }`.
   Duplicate URLs return `409 Conflict`.
 - `POST /ingestion/run` reads all registered RSS 2.0 or Atom sources and
-  returns normalized previews with per-source errors.
-  Previews are not saved; article persistence is the next day's work.
+  persists normalized previews. Each successful source includes
+  `insertedItems` and `duplicateItems`; a persistence failure is isolated to
+  that source with error code `PERSIST_FAILED`.
+
+Safe persistence verification:
+
+```powershell
+docker compose up -d
+pnpm --dir apps/api db:migrate
+pnpm --dir apps/api smoke:persistence
+```
 
 Quick verification:
 
