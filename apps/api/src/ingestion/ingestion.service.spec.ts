@@ -1,3 +1,4 @@
+import { ArticlePersistenceError } from '../articles/article-persistence.service';
 import { FeedReaderError } from './feed-reader.service';
 import { IngestionService } from './ingestion.service';
 import type { NormalizedArticlePreview } from './ingestion.types';
@@ -36,7 +37,17 @@ describe('IngestionService', () => {
         .mockResolvedValueOnce({ items: [item('one')], skippedItems: 0 })
         .mockResolvedValueOnce({ items: [item('two')], skippedItems: 1 }),
     };
-    const service = new IngestionService(sources as never, reader as never);
+    const persistence = {
+      persist: jest
+        .fn()
+        .mockResolvedValueOnce('inserted')
+        .mockResolvedValueOnce('duplicate'),
+    };
+    const service = new IngestionService(
+      sources as never,
+      reader as never,
+      persistence as never,
+    );
 
     await expect(service.run()).resolves.toEqual({
       status: 'completed',
@@ -54,6 +65,8 @@ describe('IngestionService', () => {
           status: 'ok',
           items: [item('one')],
           skippedItems: 0,
+          insertedItems: 1,
+          duplicateItems: 0,
         },
         {
           sourceId: 2,
@@ -62,6 +75,8 @@ describe('IngestionService', () => {
           status: 'ok',
           items: [item('two')],
           skippedItems: 1,
+          insertedItems: 0,
+          duplicateItems: 1,
         },
       ],
     });
@@ -74,6 +89,8 @@ describe('IngestionService', () => {
       2,
       'https://two.example/feed.xml',
     );
+    expect(persistence.persist).toHaveBeenNthCalledWith(1, 1, item('one'));
+    expect(persistence.persist).toHaveBeenNthCalledWith(2, 2, item('two'));
   });
 
   it('returns partial while retaining successful and failed source results', async () => {
@@ -91,7 +108,12 @@ describe('IngestionService', () => {
         .mockResolvedValueOnce({ items: [item('one')], skippedItems: 0 })
         .mockRejectedValueOnce(new FeedReaderError('FETCH_FAILED')),
     };
-    const service = new IngestionService(sources as never, reader as never);
+    const persistence = { persist: jest.fn().mockResolvedValue('inserted') };
+    const service = new IngestionService(
+      sources as never,
+      reader as never,
+      persistence as never,
+    );
 
     await expect(service.run()).resolves.toEqual({
       status: 'partial',
@@ -109,6 +131,8 @@ describe('IngestionService', () => {
           status: 'ok',
           items: [item('one')],
           skippedItems: 0,
+          insertedItems: 1,
+          duplicateItems: 0,
         },
         {
           sourceId: 2,
@@ -121,6 +145,9 @@ describe('IngestionService', () => {
         },
       ],
     });
+
+    expect(persistence.persist).toHaveBeenCalledTimes(1);
+    expect(persistence.persist).toHaveBeenCalledWith(1, item('one'));
   });
 
   it('returns failed when every source fails', async () => {
@@ -132,7 +159,12 @@ describe('IngestionService', () => {
     const reader = {
       read: jest.fn().mockRejectedValue(new FeedReaderError('PARSE_FAILED')),
     };
-    const service = new IngestionService(sources as never, reader as never);
+    const persistence = { persist: jest.fn() };
+    const service = new IngestionService(
+      sources as never,
+      reader as never,
+      persistence as never,
+    );
 
     await expect(service.run()).resolves.toEqual({
       status: 'failed',
@@ -154,6 +186,8 @@ describe('IngestionService', () => {
         },
       ],
     });
+
+    expect(persistence.persist).not.toHaveBeenCalled();
   });
 
   it('returns completed with empty results when no sources exist', async () => {
@@ -161,7 +195,12 @@ describe('IngestionService', () => {
       list: jest.fn().mockResolvedValue([]),
     };
     const reader = { read: jest.fn() };
-    const service = new IngestionService(sources as never, reader as never);
+    const persistence = { persist: jest.fn() };
+    const service = new IngestionService(
+      sources as never,
+      reader as never,
+      persistence as never,
+    );
 
     await expect(service.run()).resolves.toEqual({
       status: 'completed',
@@ -175,5 +214,65 @@ describe('IngestionService', () => {
     });
 
     expect(reader.read).not.toHaveBeenCalled();
+    expect(persistence.persist).not.toHaveBeenCalled();
+  });
+
+  it('returns a source error when persistence fails while retaining other sources', async () => {
+    const sources = {
+      list: jest
+        .fn()
+        .mockResolvedValue([
+          source(1, 'One', 'https://one.example/feed.xml'),
+          source(2, 'Two', 'https://two.example/feed.xml'),
+        ]),
+    };
+    const reader = {
+      read: jest
+        .fn()
+        .mockResolvedValueOnce({ items: [item('one')], skippedItems: 0 })
+        .mockResolvedValueOnce({ items: [item('two')], skippedItems: 0 }),
+    };
+    const persistence = {
+      persist: jest
+        .fn()
+        .mockRejectedValueOnce(new ArticlePersistenceError())
+        .mockResolvedValueOnce('inserted'),
+    };
+    const service = new IngestionService(
+      sources as never,
+      reader as never,
+      persistence as never,
+    );
+
+    await expect(service.run()).resolves.toEqual({
+      status: 'partial',
+      summary: {
+        totalSources: 2,
+        successfulSources: 1,
+        failedSources: 1,
+        totalItems: 1,
+      },
+      sources: [
+        {
+          sourceId: 1,
+          sourceName: 'One',
+          sourceUrl: 'https://one.example/feed.xml',
+          status: 'error',
+          items: [],
+          skippedItems: 0,
+          error: { code: 'PERSIST_FAILED' },
+        },
+        {
+          sourceId: 2,
+          sourceName: 'Two',
+          sourceUrl: 'https://two.example/feed.xml',
+          status: 'ok',
+          items: [item('two')],
+          skippedItems: 0,
+          insertedItems: 1,
+          duplicateItems: 0,
+        },
+      ],
+    });
   });
 });

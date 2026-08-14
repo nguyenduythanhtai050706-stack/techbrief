@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import Parser from 'rss-parser';
+import { ArticlesModule } from '../articles/articles.module';
 import { SourcesModule } from '../sources/sources.module';
 import { RSS_PARSER } from './ingestion.constants';
 import { IngestionController } from './ingestion.controller';
@@ -7,7 +8,7 @@ import { FeedReaderService } from './feed-reader.service';
 import { IngestionService } from './ingestion.service';
 
 @Module({
-  imports: [SourcesModule],
+  imports: [SourcesModule, ArticlesModule],
   controllers: [IngestionController],
   providers: [
     {

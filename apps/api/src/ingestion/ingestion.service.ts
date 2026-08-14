@@ -1,4 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  ArticlePersistenceError,
+  ArticlePersistenceService,
+} from '../articles/article-persistence.service';
 import { SourcesService } from '../sources/sources.service';
 import { FeedReaderError, FeedReaderService } from './feed-reader.service';
 import type {
@@ -13,6 +17,7 @@ export class IngestionService {
   constructor(
     private readonly sourcesService: SourcesService,
     private readonly feedReader: FeedReaderService,
+    private readonly persistence: ArticlePersistenceService,
   ) {}
 
   async run(): Promise<IngestionResponse> {
@@ -21,40 +26,70 @@ export class IngestionService {
       sources.map((source) => this.feedReader.read(source.url)),
     );
 
-    const sourceResults: IngestionSourceResult[] = settledReads.map(
-      (result, index) => {
-        const source = sources[index];
+    const sourceResults: IngestionSourceResult[] = [];
 
-        if (result.status === 'fulfilled') {
-          return {
+    for (const [index, result] of settledReads.entries()) {
+      const source = sources[index];
+
+      if (result.status === 'fulfilled') {
+        try {
+          let insertedItems = 0;
+          let duplicateItems = 0;
+
+          for (const preview of result.value.items) {
+            const outcome = await this.persistence.persist(source.id, preview);
+            if (outcome === 'inserted') insertedItems += 1;
+            else duplicateItems += 1;
+          }
+
+          sourceResults.push({
             sourceId: source.id,
             sourceName: source.name,
             sourceUrl: source.url,
             status: 'ok',
             items: result.value.items,
             skippedItems: result.value.skippedItems,
-          };
-        }
+            insertedItems,
+            duplicateItems,
+          });
+        } catch (error: unknown) {
+          if (!(error instanceof ArticlePersistenceError)) throw error;
 
-        if (result.reason instanceof FeedReaderError) {
           this.logger.warn(
-            'Failed to ingest source ' + source.id + ': ' + result.reason.code,
+            'Failed to persist source ' + source.id + ': ' + error.code,
           );
-
-          return {
+          sourceResults.push({
             sourceId: source.id,
             sourceName: source.name,
             sourceUrl: source.url,
             status: 'error',
             items: [],
             skippedItems: 0,
-            error: { code: result.reason.code },
-          };
+            error: { code: error.code },
+          });
         }
+        continue;
+      }
 
-        throw result.reason;
-      },
-    );
+      if (result.reason instanceof FeedReaderError) {
+        this.logger.warn(
+          'Failed to ingest source ' + source.id + ': ' + result.reason.code,
+        );
+
+        sourceResults.push({
+          sourceId: source.id,
+          sourceName: source.name,
+          sourceUrl: source.url,
+          status: 'error',
+          items: [],
+          skippedItems: 0,
+          error: { code: result.reason.code },
+        });
+        continue;
+      }
+
+      throw result.reason;
+    }
 
     const successfulSources = sourceResults.filter(
       (source) => source.status === 'ok',

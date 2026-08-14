@@ -1,4 +1,5 @@
 export type FeedErrorCode = 'FETCH_FAILED' | 'PARSE_FAILED' | 'INVALID_FEED';
+export type IngestionErrorCode = FeedErrorCode | 'PERSIST_FAILED';
 
 export interface ParsedFeedItem {
   guid?: string;
@@ -35,15 +36,30 @@ export interface FeedReadResult {
   skippedItems: number;
 }
 
-export interface IngestionSourceResult {
+export interface IngestionSuccessSourceResult {
   sourceId: number;
   sourceName: string;
   sourceUrl: string;
-  status: 'ok' | 'error';
+  status: 'ok';
   items: NormalizedArticlePreview[];
   skippedItems: number;
-  error?: { code: FeedErrorCode };
+  insertedItems: number;
+  duplicateItems: number;
 }
+
+export interface IngestionErrorSourceResult {
+  sourceId: number;
+  sourceName: string;
+  sourceUrl: string;
+  status: 'error';
+  items: [];
+  skippedItems: 0;
+  error: { code: IngestionErrorCode };
+}
+
+export type IngestionSourceResult =
+  | IngestionSuccessSourceResult
+  | IngestionErrorSourceResult;
 
 export interface IngestionResponse {
   status: 'completed' | 'partial' | 'failed';
