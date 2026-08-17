@@ -3,4 +3,5 @@ dist/
 .env
 *.log
 coverage/
+AGENTS.md
 .worktrees/
