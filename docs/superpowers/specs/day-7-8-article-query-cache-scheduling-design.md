@@ -115,7 +115,7 @@ Invalidation uses a versioned article-cache namespace rather than Redis key scan
 
 ## Scheduled ingestion
 
-`@nestjs/schedule` is added as the only new runtime dependency. `ScheduleModule.forRoot()` is registered once in `AppModule`.
+`@nestjs/schedule` and `cron` are added as direct runtime dependencies. `@nestjs/schedule` provides Nest integration; the direct `cron` dependency is required by pnpm's strict dependency layout so `IngestionSchedulerService` can create a runtime-configured `CronJob` after `ConfigService` has loaded `.env`. `ScheduleModule.forRoot()` is registered once in `AppModule`.
 
 Environment variables:
 
