@@ -4,6 +4,7 @@ import { ArticlesModule } from '../articles/articles.module';
 import { SourcesModule } from '../sources/sources.module';
 import { RSS_PARSER } from './ingestion.constants';
 import { IngestionController } from './ingestion.controller';
+import { IngestionSchedulerService } from './ingestion-scheduler.service';
 import { FeedReaderService } from './feed-reader.service';
 import { IngestionService } from './ingestion.service';
 
@@ -22,6 +23,7 @@ import { IngestionService } from './ingestion.service';
     },
     FeedReaderService,
     IngestionService,
+    IngestionSchedulerService,
   ],
   exports: [FeedReaderService, IngestionService],
 })
