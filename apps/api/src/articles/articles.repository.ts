@@ -197,7 +197,9 @@ export class ArticlesRepository {
         '[]'::jsonb
       ) AS sources
     FROM articles article
-    LEFT JOIN article_sources article_source ON article_source.article_id = article.id
+    LEFT JOIN (
+      SELECT DISTINCT article_id, source_id FROM article_sources
+    ) article_source ON article_source.article_id = article.id
     LEFT JOIN sources source ON source.id = article_source.source_id
     ${where}
     GROUP BY article.id`;

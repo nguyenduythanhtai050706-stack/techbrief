@@ -249,6 +249,32 @@ describe('ArticlesRepository', () => {
     );
   });
 
+  it('deduplicates source provenance when one source has multiple external IDs', async () => {
+    const database = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ total_items: 1 }] })
+        .mockResolvedValueOnce({ rows: [listRow] }),
+    };
+    const repository = new ArticlesRepository(database as never);
+
+    await repository.list({
+      page: 1,
+      limit: 20,
+      sourceId: null,
+      from: null,
+      to: null,
+    });
+
+    expect(database.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining(
+        'SELECT DISTINCT article_id, source_id FROM article_sources',
+      ),
+      [20, 0],
+    );
+  });
+
   it('returns a mapped article for its ID and null when it is missing', async () => {
     const database = {
       query: jest
