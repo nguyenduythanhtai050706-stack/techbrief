@@ -21,6 +21,10 @@ const item = (externalId: string): NormalizedArticlePreview => ({
   categories: [],
 });
 
+const createCache = () => ({
+  invalidateArticles: jest.fn().mockResolvedValue(undefined),
+});
+
 describe('IngestionService', () => {
   it('returns completed and aggregates all successful sources', async () => {
     const sources = {
@@ -43,10 +47,12 @@ describe('IngestionService', () => {
         .mockResolvedValueOnce('inserted')
         .mockResolvedValueOnce('duplicate'),
     };
+    const cache = createCache();
     const service = new IngestionService(
       sources as never,
       reader as never,
       persistence as never,
+      cache as never,
     );
 
     await expect(service.run()).resolves.toEqual({
@@ -91,6 +97,7 @@ describe('IngestionService', () => {
     );
     expect(persistence.persist).toHaveBeenNthCalledWith(1, 1, item('one'));
     expect(persistence.persist).toHaveBeenNthCalledWith(2, 2, item('two'));
+    expect(cache.invalidateArticles).toHaveBeenCalledTimes(1);
   });
 
   it('returns partial while retaining successful and failed source results', async () => {
@@ -109,10 +116,12 @@ describe('IngestionService', () => {
         .mockRejectedValueOnce(new FeedReaderError('FETCH_FAILED')),
     };
     const persistence = { persist: jest.fn().mockResolvedValue('inserted') };
+    const cache = createCache();
     const service = new IngestionService(
       sources as never,
       reader as never,
       persistence as never,
+      cache as never,
     );
 
     await expect(service.run()).resolves.toEqual({
@@ -148,6 +157,7 @@ describe('IngestionService', () => {
 
     expect(persistence.persist).toHaveBeenCalledTimes(1);
     expect(persistence.persist).toHaveBeenCalledWith(1, item('one'));
+    expect(cache.invalidateArticles).toHaveBeenCalledTimes(1);
   });
 
   it('returns failed when every source fails', async () => {
@@ -160,10 +170,12 @@ describe('IngestionService', () => {
       read: jest.fn().mockRejectedValue(new FeedReaderError('PARSE_FAILED')),
     };
     const persistence = { persist: jest.fn() };
+    const cache = createCache();
     const service = new IngestionService(
       sources as never,
       reader as never,
       persistence as never,
+      cache as never,
     );
 
     await expect(service.run()).resolves.toEqual({
@@ -188,6 +200,7 @@ describe('IngestionService', () => {
     });
 
     expect(persistence.persist).not.toHaveBeenCalled();
+    expect(cache.invalidateArticles).not.toHaveBeenCalled();
   });
 
   it('returns completed with empty results when no sources exist', async () => {
@@ -196,10 +209,12 @@ describe('IngestionService', () => {
     };
     const reader = { read: jest.fn() };
     const persistence = { persist: jest.fn() };
+    const cache = createCache();
     const service = new IngestionService(
       sources as never,
       reader as never,
       persistence as never,
+      cache as never,
     );
 
     await expect(service.run()).resolves.toEqual({
@@ -215,6 +230,7 @@ describe('IngestionService', () => {
 
     expect(reader.read).not.toHaveBeenCalled();
     expect(persistence.persist).not.toHaveBeenCalled();
+    expect(cache.invalidateArticles).not.toHaveBeenCalled();
   });
 
   it('returns a source error when persistence fails while retaining other sources', async () => {
@@ -238,10 +254,12 @@ describe('IngestionService', () => {
         .mockRejectedValueOnce(new ArticlePersistenceError())
         .mockResolvedValueOnce('inserted'),
     };
+    const cache = createCache();
     const service = new IngestionService(
       sources as never,
       reader as never,
       persistence as never,
+      cache as never,
     );
 
     await expect(service.run()).resolves.toEqual({
@@ -274,5 +292,7 @@ describe('IngestionService', () => {
         },
       ],
     });
+
+    expect(cache.invalidateArticles).toHaveBeenCalledTimes(1);
   });
 });

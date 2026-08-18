@@ -3,6 +3,7 @@ import {
   ArticlePersistenceError,
   ArticlePersistenceService,
 } from '../articles/article-persistence.service';
+import { ArticlesCacheService } from '../articles/articles-cache.service';
 import { SourcesService } from '../sources/sources.service';
 import { FeedReaderError, FeedReaderService } from './feed-reader.service';
 import type {
@@ -18,6 +19,7 @@ export class IngestionService {
     private readonly sourcesService: SourcesService,
     private readonly feedReader: FeedReaderService,
     private readonly persistence: ArticlePersistenceService,
+    private readonly articlesCache: ArticlesCacheService,
   ) {}
 
   async run(): Promise<IngestionResponse> {
@@ -99,6 +101,10 @@ export class IngestionService {
       (total, source) => total + source.items.length,
       0,
     );
+
+    if (successfulSources > 0) {
+      await this.articlesCache.invalidateArticles();
+    }
 
     const status =
       failedSources === 0
