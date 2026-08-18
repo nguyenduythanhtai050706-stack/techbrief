@@ -1,14 +1,67 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import type {
+  ArticleListQuery,
   ArticlePersistenceInput,
   ArticlePersistenceOutcome,
   ArticleRecord,
+  ArticleSourceView,
+  ArticleView,
 } from './article.types';
+
+interface ArticleViewRow {
+  id: number;
+  canonical_url: string;
+  title: string;
+  summary: string | null;
+  published_at: Date | string | null;
+  author: string | null;
+  categories: string[];
+  created_at: Date | string;
+  last_seen_at: Date | string;
+  sources: ArticleSourceView[];
+}
 
 @Injectable()
 export class ArticlesRepository {
   constructor(private readonly database: DatabaseService) {}
+
+  async list(
+    query: ArticleListQuery,
+  ): Promise<{ items: ArticleView[]; totalItems: number }> {
+    const { where, values } = this.buildFilterClause(query);
+    const total = await this.database.query<{ total_items: number }>(
+      `SELECT COUNT(*)::int AS total_items
+       FROM articles article
+       ${where}`,
+      values,
+    );
+    const paginationValues = [
+      ...values,
+      query.limit,
+      (query.page - 1) * query.limit,
+    ];
+    const rows = await this.database.query<ArticleViewRow>(
+      `${this.articleSelect(where)}
+       ORDER BY COALESCE(article.published_at, article.created_at) DESC, article.id DESC
+       LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      paginationValues,
+    );
+
+    return {
+      totalItems: total.rows[0]?.total_items ?? 0,
+      items: rows.rows.map((row) => this.mapArticle(row)),
+    };
+  }
+
+  async findById(id: number): Promise<ArticleView | null> {
+    const result = await this.database.query<ArticleViewRow>(
+      `${this.articleSelect('WHERE article.id = $1')}`,
+      [id],
+    );
+
+    return result.rows[0] ? this.mapArticle(result.rows[0]) : null;
+  }
 
   async persist(
     input: ArticlePersistenceInput,
@@ -89,5 +142,86 @@ export class ArticlesRepository {
        DO UPDATE SET last_seen_at = NOW()`,
       [articleId, input.sourceId, input.externalId],
     );
+  }
+
+  private buildFilterClause(query: ArticleListQuery): {
+    where: string;
+    values: unknown[];
+  } {
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+
+    if (query.sourceId !== null) {
+      values.push(query.sourceId);
+      conditions.push(
+        `EXISTS (SELECT 1 FROM article_sources article_source_filter
+         WHERE article_source_filter.article_id = article.id
+           AND article_source_filter.source_id = $${values.length})`,
+      );
+    }
+    if (query.from !== null) {
+      values.push(query.from);
+      conditions.push(
+        `COALESCE(article.published_at, article.created_at) >= $${values.length}`,
+      );
+    }
+    if (query.to !== null) {
+      values.push(query.to);
+      conditions.push(
+        `COALESCE(article.published_at, article.created_at) <= $${values.length}`,
+      );
+    }
+
+    return {
+      where: conditions.length === 0 ? '' : `WHERE ${conditions.join(' AND ')}`,
+      values,
+    };
+  }
+
+  private articleSelect(where: string): string {
+    return `SELECT
+      article.id,
+      article.canonical_url,
+      article.title,
+      article.summary,
+      article.published_at,
+      article.author,
+      article.categories,
+      article.created_at,
+      article.last_seen_at,
+      COALESCE(
+        jsonb_agg(
+          jsonb_build_object('id', source.id, 'name', source.name, 'url', source.url)
+          ORDER BY source.id ASC
+        ) FILTER (WHERE source.id IS NOT NULL),
+        '[]'::jsonb
+      ) AS sources
+    FROM articles article
+    LEFT JOIN article_sources article_source ON article_source.article_id = article.id
+    LEFT JOIN sources source ON source.id = article_source.source_id
+    ${where}
+    GROUP BY article.id`;
+  }
+
+  private mapArticle(row: ArticleViewRow): ArticleView {
+    return {
+      id: row.id,
+      canonicalUrl: row.canonical_url,
+      title: row.title,
+      summary: row.summary,
+      publishedAt: this.toIsoString(row.published_at),
+      author: row.author,
+      categories: row.categories,
+      createdAt: this.toIsoString(row.created_at),
+      lastSeenAt: this.toIsoString(row.last_seen_at),
+      sources: row.sources,
+    };
+  }
+
+  private toIsoString(value: Date | string): string;
+  private toIsoString(value: Date | string | null): string | null;
+  private toIsoString(value: Date | string | null): string | null {
+    if (value === null) return null;
+    return value instanceof Date ? value.toISOString() : value;
   }
 }
