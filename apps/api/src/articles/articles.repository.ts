@@ -17,6 +17,7 @@ interface ArticleViewRow {
   published_at: Date | string | null;
   author: string | null;
   categories: string[];
+  image_url?: string | null;
   created_at: Date | string;
   last_seen_at: Date | string;
   sources: ArticleSourceView[];
@@ -104,8 +105,8 @@ export class ArticlesRepository {
   private async insert(input: ArticlePersistenceInput): Promise<ArticleRecord> {
     const inserted = await this.database.query<ArticleRecord>(
       `INSERT INTO articles (
-        canonical_url, content_fingerprint, title, summary, published_at, categories, author
-      ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
+        canonical_url, content_fingerprint, title, summary, published_at, categories, author, image_url
+      ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)
       RETURNING id, canonical_url, content_fingerprint`,
       [
         input.canonicalUrl,
@@ -115,6 +116,7 @@ export class ArticlesRepository {
         input.publishedAt,
         JSON.stringify(input.categories),
         input.author,
+        input.imageUrl ?? null,
       ],
     );
     return inserted.rows[0];
@@ -129,6 +131,12 @@ export class ArticlesRepository {
       [article.id],
     );
     await this.associate(article.id, input);
+    if (input.imageUrl && article.canonical_url === input.canonicalUrl) {
+      await this.database.query(
+        'UPDATE articles SET image_url = COALESCE(image_url, $2) WHERE id = $1',
+        [article.id, input.imageUrl],
+      );
+    }
   }
 
   private async associate(
@@ -187,6 +195,7 @@ export class ArticlesRepository {
       article.published_at,
       article.author,
       article.categories,
+      article.image_url,
       article.created_at,
       article.last_seen_at,
       COALESCE(
@@ -214,6 +223,7 @@ export class ArticlesRepository {
       publishedAt: this.toIsoString(row.published_at),
       author: row.author,
       categories: row.categories,
+      imageUrl: row.image_url ?? null,
       createdAt: this.toIsoString(row.created_at),
       lastSeenAt: this.toIsoString(row.last_seen_at),
       sources: row.sources,

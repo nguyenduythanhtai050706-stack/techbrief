@@ -1,5 +1,8 @@
 import { ArticlesRepository } from './articles.repository';
-import type { ArticleListQuery, ArticlePersistenceInput } from './article.types';
+import type {
+  ArticleListQuery,
+  ArticlePersistenceInput,
+} from './article.types';
 
 const input: ArticlePersistenceInput = {
   sourceId: 7,
@@ -8,7 +11,8 @@ const input: ArticlePersistenceInput = {
   url: 'https://news.example/article',
   canonicalUrl: 'https://news.example/article',
   contentFingerprint: 'a'.repeat(64),
-  summary: 'Useful article content that is long enough to support a fingerprint.',
+  summary:
+    'Useful article content that is long enough to support a fingerprint.',
   publishedAt: '2026-08-11T08:00:00.000Z',
   author: 'Ada Lovelace',
   categories: ['AI'],
@@ -31,6 +35,51 @@ const listRow = {
 };
 
 describe('ArticlesRepository', () => {
+  it('persists an image URL and returns it in article detail', async () => {
+    const database = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ id: 42 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ ...listRow, image_url: 'https://cdn.example/photo.jpg' }],
+        }),
+    };
+    const repository = new ArticlesRepository(database as never);
+    await repository.persist({
+      ...input,
+      imageUrl: 'https://cdn.example/photo.jpg',
+    });
+    expect(database.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO articles'),
+      expect.arrayContaining(['https://cdn.example/photo.jpg']),
+    );
+    await expect(repository.findById(42)).resolves.toMatchObject({
+      imageUrl: 'https://cdn.example/photo.jpg',
+    });
+  });
+
+  it('fills a missing image on repeat ingestion from the same canonical URL', async () => {
+    const database = {
+      query: jest
+        .fn()
+        .mockResolvedValue({
+          rows: [{ id: 42, canonical_url: input.canonicalUrl }],
+        }),
+    };
+    const repository = new ArticlesRepository(database as never);
+    await repository.persist({
+      ...input,
+      imageUrl: 'https://cdn.example/photo.jpg',
+    });
+    expect(database.query).toHaveBeenCalledWith(
+      'UPDATE articles SET image_url = COALESCE(image_url, $2) WHERE id = $1',
+      [42, 'https://cdn.example/photo.jpg'],
+    );
+  });
+
   it('inserts a new article and associates its reporting source', async () => {
     const database = {
       query: jest
@@ -56,7 +105,9 @@ describe('ArticlesRepository', () => {
       expect.arrayContaining([input.canonicalUrl, input.contentFingerprint]),
     );
     expect(database.query).toHaveBeenCalledWith(
-      expect.stringContaining('ON CONFLICT (article_id, source_id, external_id)'),
+      expect.stringContaining(
+        'ON CONFLICT (article_id, source_id, external_id)',
+      ),
       [41, input.sourceId, input.externalId],
     );
   });
@@ -85,7 +136,9 @@ describe('ArticlesRepository', () => {
       [41],
     );
     expect(database.query).toHaveBeenCalledWith(
-      expect.stringContaining('ON CONFLICT (article_id, source_id, external_id)'),
+      expect.stringContaining(
+        'ON CONFLICT (article_id, source_id, external_id)',
+      ),
       [41, input.sourceId, input.externalId],
     );
     expect(database.query).not.toHaveBeenCalledWith(
@@ -175,6 +228,7 @@ describe('ArticlesRepository', () => {
           canonicalUrl: 'https://news.example/article-42',
           title: 'Persisted article',
           summary: 'A stored summary.',
+          imageUrl: null,
           publishedAt: null,
           author: null,
           categories: ['AI', 'Engineering'],

@@ -39,6 +39,7 @@ export interface ArticleView {
   publishedAt: string | null;
   author: string | null;
   categories: string[];
+  imageUrl?: string | null;
   createdAt: string;
   lastSeenAt: string;
   sources: ArticleSourceView[];

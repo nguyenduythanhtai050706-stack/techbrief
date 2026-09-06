@@ -11,6 +11,9 @@ export interface ParsedFeedItem {
   creator?: string;
   author?: string;
   categories?: string[];
+  enclosure?: { url?: string; type?: string };
+  mediaContent?: Array<{ $?: { url?: string; type?: string; medium?: string } }>;
+  mediaThumbnail?: Array<{ $?: { url?: string } }>;
 }
 
 export interface ParsedFeed {
@@ -29,6 +32,7 @@ export interface NormalizedArticlePreview {
   publishedAt: string | null;
   author: string | null;
   categories: string[];
+  imageUrl?: string | null;
 }
 
 export interface FeedReadResult {

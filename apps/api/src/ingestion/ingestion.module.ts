@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import Parser from 'rss-parser';
+import { createFeedParser } from './feed-parser';
 import { ArticlesModule } from '../articles/articles.module';
 import { SourcesModule } from '../sources/sources.module';
 import { RSS_PARSER } from './ingestion.constants';
@@ -14,12 +14,7 @@ import { IngestionService } from './ingestion.service';
   providers: [
     {
       provide: RSS_PARSER,
-      useFactory: () =>
-        new Parser({
-          timeout: 10_000,
-          maxRedirects: 5,
-          headers: { 'User-Agent': 'TechBrief/0.1' },
-        }),
+      useFactory: createFeedParser,
     },
     FeedReaderService,
     IngestionService,

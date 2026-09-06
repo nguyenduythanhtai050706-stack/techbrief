@@ -24,6 +24,7 @@ describe('FeedReaderService', () => {
             title: 'Article 1',
             url: 'https://example.com/article-1',
             summary: null,
+            imageUrl: null,
             publishedAt: null,
             author: null,
             categories: [],

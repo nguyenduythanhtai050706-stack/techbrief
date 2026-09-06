@@ -4,6 +4,7 @@ import type {
   FeedErrorCode,
   FeedParser,
   FeedReadResult,
+  ParsedFeedItem,
 } from './ingestion.types';
 
 @Injectable()
@@ -21,6 +22,23 @@ function isAbsoluteHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function getImageUrl(item: ParsedFeedItem): string | null {
+  const candidates = [
+    ...(item.mediaThumbnail ?? []).map((entry) => entry.$?.url),
+    ...(item.mediaContent ?? [])
+      .filter(({ $: attributes }) =>
+        attributes?.type
+          ? attributes.type.toLowerCase().startsWith('image/')
+          : attributes?.medium === 'image',
+      )
+      .map((entry) => entry.$?.url),
+    item.enclosure?.type?.toLowerCase().startsWith('image/')
+      ? item.enclosure.url
+      : undefined,
+  ];
+  return candidates.find((value) => value && isAbsoluteHttpUrl(value)) ?? null;
 }
 
 export class FeedReaderService {
@@ -74,6 +92,7 @@ export class FeedReaderService {
         publishedAt,
         author: item.creator ?? item.author ?? null,
         categories: item.categories ?? [],
+        imageUrl: getImageUrl(item),
       });
     }
 
