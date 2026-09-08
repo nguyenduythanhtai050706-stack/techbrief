@@ -7,7 +7,10 @@ and presents a source-linked daily brief readable in 1–3 minutes.
 
 ## Current status
 
-Day 8 — persisted article queries, resilient Redis caching, and scheduled ingestion.
+Day 9 — image-aware feed, EN/VI labels, theme controls, and responsive layout.
+Local database migrations and persistence smoke verification pass. Browser QA
+confirms the feed reads from the real API; the current database contains fixture
+content. Image fallback and pagination were checked using the separate QA feed.
 
 ## Stack
 

@@ -5,13 +5,9 @@
   padding: 24px 0 80px;
 }
 
-.news-feed h2,
 .news-card h3 {
   font-family: Georgia, "Times New Roman", serif;
   font-weight: 500;
-}
-.news-feed h2 {
-  font-size: 1.8rem;
 }
 .news-featured {
   display: grid;
@@ -196,7 +192,7 @@
 
 .brief-intro {
   max-width: 680px;
-  padding: clamp(72px, 16vw, 160px) 8px 56px;
+  padding: clamp(72px, 16vw, 160px) 8px 24px;
 }
 
 .eyebrow {

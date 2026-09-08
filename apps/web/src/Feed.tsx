@@ -144,10 +144,9 @@ export function Feed({ locale }: { locale: "vi" | "en" }) {
   return (
     <section
       className="news-feed"
-      aria-labelledby="feed-heading"
+      aria-label={text.feed}
       aria-busy={loading}
     >
-      <h2 id="feed-heading">{text.feed}</h2>
       {items.length > 0 && (
         <>
           <div className="news-featured">
