@@ -13,7 +13,7 @@ const input: ArticlePersistenceInput = {
   contentFingerprint: 'a'.repeat(64),
   summary:
     'Useful article content that is long enough to support a fingerprint.',
-  publishedAt: '2026-08-11T08:00:00.000Z',
+  publishedAt: null,
   author: 'Ada Lovelace',
   categories: ['AI'],
 };
@@ -173,6 +173,82 @@ describe('ArticlesRepository', () => {
     );
   });
 
+  it('recognizes an article previously grouped through source provenance', async () => {
+    const database = {
+      query: jest.fn().mockResolvedValue({
+        rows: [
+          {
+            id: 126,
+            canonical_url: 'https://www.theverge.com/volvo-story',
+            content_fingerprint: null,
+          },
+        ],
+      }),
+    };
+    const repository = new ArticlesRepository(database as never);
+
+    await expect(
+      repository.persist({
+        ...input,
+        sourceId: 13,
+        externalId: 'https://www.engadget.com/volvo-story',
+        canonicalUrl: 'https://www.engadget.com/volvo-story',
+      }),
+    ).resolves.toBe('duplicate');
+
+    expect(database.query).toHaveBeenCalledWith(
+      expect.stringContaining('provenance.external_id = $3'),
+      [
+        'https://www.engadget.com/volvo-story',
+        13,
+        'https://www.engadget.com/volvo-story',
+      ],
+    );
+  });
+
+  it('groups similar cross-source headlines published close together', async () => {
+    const database = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 66,
+              canonical_url: 'https://arstechnica.com/volvo-story',
+              content_fingerprint: null,
+              title:
+                'Volvo increases the batteries for 2028 XC60 and XC90 plug-in refresh',
+            },
+          ],
+        })
+        .mockResolvedValue({ rows: [] }),
+    };
+    const repository = new ArticlesRepository(database as never);
+
+    await expect(
+      repository.persist({
+        ...input,
+        sourceId: 13,
+        title:
+          '2028 Volvo XC60 and XC90 first look: Double the range and smarter safety, too',
+        canonicalUrl: 'https://www.engadget.com/volvo-story',
+        url: 'https://www.engadget.com/volvo-story',
+        contentFingerprint: null,
+        publishedAt: '2026-09-15T07:00:00.000Z',
+      }),
+    ).resolves.toBe('duplicate');
+
+    expect(database.query).toHaveBeenCalledWith(
+      expect.stringContaining('INTERVAL \'12 hours\''),
+      ['2026-09-15T07:00:00.000Z', 13],
+    );
+    expect(database.query).toHaveBeenCalledWith(
+      expect.stringContaining('ON CONFLICT (article_id, source_id, external_id)'),
+      [66, 13, input.externalId],
+    );
+  });
+
   it('recovers a duplicate-key insert race by re-reading the article', async () => {
     const duplicateKeyError = Object.assign(new Error('duplicate key'), {
       code: '23505',
@@ -218,6 +294,7 @@ describe('ArticlesRepository', () => {
       sourceId: 7,
       from: '2026-08-01T00:00:00.000Z',
       to: null,
+      category: null,
     };
 
     await expect(repository.list(query)).resolves.toEqual({

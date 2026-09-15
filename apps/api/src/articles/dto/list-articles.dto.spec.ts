@@ -22,6 +22,10 @@ describe('ListArticlesDto', () => {
     [{ sourceId: '1.5' }, 'sourceId'],
     [{ from: 'not-a-date' }, 'from'],
     [{ to: 'not-a-date' }, 'to'],
+    [{ category: 'unknown' }, 'category'],
+    [{ category: ['AI', 'Products'] }, 'category'],
+    [{ category: 12 }, 'category'],
+    [{ category: '' }, 'category'],
   ])('rejects an invalid %s query field', async (input, property) => {
     const errors = await validationErrors(input);
 
@@ -38,4 +42,11 @@ describe('ListArticlesDto', () => {
     expect(dto).toMatchObject({ page: 2, limit: 50, sourceId: 7 });
     await expect(validate(dto)).resolves.toHaveLength(0);
   });
+
+  it.each(['AI', 'Products', 'Technology'])(
+    'accepts category %s',
+    async (category) => {
+      await expect(validationErrors({ category })).resolves.toHaveLength(0);
+    },
+  );
 });

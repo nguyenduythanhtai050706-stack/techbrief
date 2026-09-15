@@ -23,11 +23,19 @@ describe('Feed images from RSS XML', () => {
       '<media:thumbnail url="javascript:alert(1)"/><enclosure url="https://cdn.example/fallback.jpg" type="image/jpeg"/>',
       'https://cdn.example/fallback.jpg',
     ],
+    [
+      '<description><![CDATA[<figure><img src="https://cdn.example/atom.jpg?width=1200&#038;quality=90" /></figure>]]></description>',
+      'https://cdn.example/atom.jpg?width=1200&quality=90',
+    ],
+    [
+      '<content:encoded><![CDATA[<p><img data-src="https://cdn.example/encoded.jpg" /></p>]]></content:encoded>',
+      'https://cdn.example/encoded.jpg',
+    ],
     ['', null],
   ])('normalizes image metadata: %s', async (metadata, imageUrl) => {
     const parser = createFeedParser();
     const feed = await parser.parseString(`
-      <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+      <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:content="http://purl.org/rss/1.0/modules/content/">
         <channel><title>Example</title><link>https://example.com</link>
           <item><title>Story</title><link>https://example.com/story</link>
             ${metadata}

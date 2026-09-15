@@ -23,6 +23,7 @@ export interface ArticleListQuery {
   sourceId: number | null;
   from: string | null;
   to: string | null;
+  category?: string | null;
 }
 
 export interface ArticleSourceView {
@@ -32,6 +33,7 @@ export interface ArticleSourceView {
 }
 
 export interface ArticleView {
+  translations?: Record<'en' | 'vi', { title: string; summary: string }>;
   id: number;
   canonicalUrl: string;
   title: string;

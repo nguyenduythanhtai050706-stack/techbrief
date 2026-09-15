@@ -2,6 +2,8 @@ import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsInt,
+  IsIn,
+  IsString,
   IsOptional,
   Max,
   Min,
@@ -32,4 +34,9 @@ export class ListArticlesDto {
   @IsOptional()
   @IsDateString()
   to?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['AI', 'Products', 'Technology'])
+  category?: string;
 }

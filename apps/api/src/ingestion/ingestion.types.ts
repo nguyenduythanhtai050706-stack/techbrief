@@ -6,6 +6,7 @@ export interface ParsedFeedItem {
   link?: string;
   title?: string;
   content?: string;
+  contentEncoded?: string;
   contentSnippet?: string;
   isoDate?: string;
   creator?: string;
@@ -66,6 +67,7 @@ export type IngestionSourceResult =
   | IngestionErrorSourceResult;
 
 export interface IngestionResponse {
+  enrichment?: import('../articles/article-brief.service').BriefRunResult;
   status: 'completed' | 'partial' | 'failed';
   summary: {
     totalSources: number;

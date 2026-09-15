@@ -19,6 +19,9 @@ async function runMigration(): Promise<void> {
       '001_create_sources.sql',
       '002_create_articles.sql',
       '003_add_article_images.sql',
+      '004_normalize_article_categories.sql',
+      '005_article_briefs.sql',
+      '006_seed_default_sources.sql',
     ] as const;
 
     for (const fileName of migrationFiles) {

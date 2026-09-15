@@ -26,6 +26,20 @@ const createCache = () => ({
 });
 
 describe('IngestionService', () => {
+  it('enriches persisted articles and exposes the AI batch outcome', async () => {
+    const briefs = { run: jest.fn().mockResolvedValue({ status: 'partial', processed: 0, failed: 1, error: 'GEMINI_HTTP_429' }) };
+    const service = new IngestionService(
+      { list: jest.fn().mockResolvedValue([source(1, 'One', 'https://one.example/feed')]) } as never,
+      { read: jest.fn().mockResolvedValue({ items: [item('one')], skippedItems: 0 }) } as never,
+      { persist: jest.fn().mockResolvedValue('inserted') } as never,
+      createCache() as never,
+      briefs as never,
+    );
+    await expect(service.run()).resolves.toMatchObject({
+      status: 'completed', enrichment: { status: 'partial', error: 'GEMINI_HTTP_429' },
+    });
+    expect(briefs.run).toHaveBeenCalledTimes(1);
+  });
   it('returns completed and aggregates all successful sources', async () => {
     const sources = {
       list: jest

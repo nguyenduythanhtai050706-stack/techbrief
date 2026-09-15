@@ -6,7 +6,7 @@ import type {
   ArticleView,
 } from './article.types';
 
-const CACHE_PREFIX = 'articles:v1';
+const CACHE_PREFIX = 'articles:v3';
 const CACHE_VERSION_KEY = `${CACHE_PREFIX}:version`;
 const CACHE_TTL_SECONDS = 60;
 

@@ -8,8 +8,10 @@ import type {
   ArticleSourceView,
   ArticleView,
 } from './article.types';
+import { isLikelySameStory } from './article-story-matcher';
 
 interface ArticleViewRow {
+  translations?: ArticleView['translations'];
   id: number;
   canonical_url: string;
   title: string;
@@ -21,6 +23,10 @@ interface ArticleViewRow {
   created_at: Date | string;
   last_seen_at: Date | string;
   sources: ArticleSourceView[];
+}
+
+interface StoryMatchRow extends ArticleRecord {
+  title: string;
 }
 
 @Injectable()
@@ -89,17 +95,53 @@ export class ArticlesRepository {
   private async findExisting(
     input: ArticlePersistenceInput,
   ): Promise<ArticleRecord | null> {
-    const canonical = await this.database.query<ArticleRecord>(
-      'SELECT id, canonical_url, content_fingerprint FROM articles WHERE canonical_url = $1 LIMIT 1',
-      [input.canonicalUrl],
+    const canonicalOrProvenance = await this.database.query<ArticleRecord>(
+      `SELECT article.id, article.canonical_url, article.content_fingerprint
+       FROM articles article
+       WHERE article.canonical_url = $1
+          OR EXISTS (
+            SELECT 1 FROM article_sources provenance
+            WHERE provenance.article_id = article.id
+              AND provenance.source_id = $2
+              AND provenance.external_id = $3
+          )
+       ORDER BY CASE WHEN article.canonical_url = $1 THEN 0 ELSE 1 END
+       LIMIT 1`,
+      [input.canonicalUrl, input.sourceId, input.externalId],
     );
-    if (canonical.rows[0]) return canonical.rows[0];
-    if (input.contentFingerprint === null) return null;
-    const fingerprint = await this.database.query<ArticleRecord>(
-      'SELECT id, canonical_url, content_fingerprint FROM articles WHERE content_fingerprint = $1 LIMIT 1',
-      [input.contentFingerprint],
+    if (canonicalOrProvenance.rows[0]) return canonicalOrProvenance.rows[0];
+    if (input.contentFingerprint !== null) {
+      const fingerprint = await this.database.query<ArticleRecord>(
+        'SELECT id, canonical_url, content_fingerprint FROM articles WHERE content_fingerprint = $1 LIMIT 1',
+        [input.contentFingerprint],
+      );
+      if (fingerprint.rows[0]) return fingerprint.rows[0];
+    }
+    if (input.publishedAt === null) return null;
+
+    const candidates = await this.database.query<StoryMatchRow>(
+      `SELECT article.id, article.canonical_url, article.content_fingerprint, article.title
+       FROM articles article
+       WHERE COALESCE(article.published_at, article.created_at)
+         BETWEEN $1::timestamptz - INTERVAL '12 hours'
+             AND $1::timestamptz + INTERVAL '12 hours'
+         AND NOT EXISTS (
+           SELECT 1 FROM article_sources same_source
+           WHERE same_source.article_id = article.id
+             AND same_source.source_id = $2
+         )
+       ORDER BY ABS(EXTRACT(EPOCH FROM (
+         COALESCE(article.published_at, article.created_at) - $1::timestamptz
+       ))) ASC
+       LIMIT 50`,
+      [input.publishedAt, input.sourceId],
     );
-    return fingerprint.rows[0] ?? null;
+
+    return (
+      candidates.rows.find((candidate) =>
+        isLikelySameStory(input.title, candidate.title),
+      ) ?? null
+    );
   }
 
   private async insert(input: ArticlePersistenceInput): Promise<ArticleRecord> {
@@ -131,7 +173,20 @@ export class ArticlesRepository {
       [article.id],
     );
     await this.associate(article.id, input);
-    if (input.imageUrl && article.canonical_url === input.canonicalUrl) {
+    if (input.categories.length > 0) {
+      // Merge source labels atomically; the generated column classifies the union.
+      await this.database.query(
+        `UPDATE articles SET categories = (
+          SELECT COALESCE(jsonb_agg(DISTINCT label), '[]'::jsonb)
+          FROM jsonb_array_elements(
+            (CASE WHEN jsonb_typeof(categories) = 'array' THEN categories ELSE '[]'::jsonb END)
+            || $2::jsonb
+          ) AS labels(label)
+        ) WHERE id = $1`,
+        [article.id, JSON.stringify(input.categories)],
+      );
+    }
+    if (input.imageUrl) {
       await this.database.query(
         'UPDATE articles SET image_url = COALESCE(image_url, $2) WHERE id = $1',
         [article.id, input.imageUrl],
@@ -179,6 +234,10 @@ export class ArticlesRepository {
         `COALESCE(article.published_at, article.created_at) <= $${values.length}`,
       );
     }
+    if (query.category) {
+      values.push(query.category);
+      conditions.push(`article.effective_categories ? $${values.length}`);
+    }
 
     return {
       where: conditions.length === 0 ? '' : `WHERE ${conditions.join(' AND ')}`,
@@ -194,7 +253,8 @@ export class ArticlesRepository {
       article.summary,
       article.published_at,
       article.author,
-      article.categories,
+      article.effective_categories AS categories,
+      article.translations,
       article.image_url,
       article.created_at,
       article.last_seen_at,
@@ -220,6 +280,7 @@ export class ArticlesRepository {
       canonicalUrl: row.canonical_url,
       title: row.title,
       summary: row.summary,
+      ...(row.translations ? { translations: row.translations } : {}),
       publishedAt: this.toIsoString(row.published_at),
       author: row.author,
       categories: row.categories,

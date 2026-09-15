@@ -8,6 +8,7 @@ export function createFeedParser() {
     headers: { 'User-Agent': 'TechBrief/0.1' },
     customFields: {
       item: [
+        ['content:encoded', 'contentEncoded'],
         ['media:content', 'mediaContent', { keepArray: true }],
         ['media:thumbnail', 'mediaThumbnail', { keepArray: true }],
       ],

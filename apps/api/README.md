@@ -46,6 +46,16 @@ $ pnpm run start:prod
 
 ## Run tests
 
+Article categories use migration `004_normalize_article_categories.sql`.
+Run `npm run db:migrate` before starting the API with this schema.
+RSS labels remain in `articles.categories`; PostgreSQL computes
+`normalized_categories` for existing and newly ingested articles. The API returns
+the normalized labels and accepts `category=AI`, `Products`, or `Technology`.
+
+Run `npm run smoke:categories` for an isolated, in-memory PostgreSQL test using
+PGlite. It checks migrations, normalization, duplicate ingestion and pagination
+without requiring Docker or changing your local database.
+
 ```bash
 # unit tests
 $ pnpm run test
@@ -56,6 +66,26 @@ $ pnpm run test:e2e
 # test coverage
 $ pnpm run test:cov
 ```
+
+## TechBrief bilingual summaries
+
+Set `GEMINI_API_KEY` in `apps/api/.env` (Git ignores this file).
+The default model is `gemini-3.5-flash-lite`; optionally override it with
+`GEMINI_MODEL`. Never put credentials in a `VITE_*` variable.
+
+From the repository root, run `pnpm --dir apps/api db:migrate`, then
+`pnpm --dir apps/api articles:enrich` to process up to 10 pending articles.
+Successful RSS ingestion also runs this bounded enrichment step.
+The response includes `enrichment` separately from RSS fetch/persistence status.
+
+List and detail responses include saved `translations.en` and `translations.vi`.
+The frontend switches both titles and summaries without extra AI requests.
+Category filters use AI categories when available, otherwise normalized RSS labels.
+Summaries are based on the RSS excerpt, not the full source article.
+Missing keys or provider errors leave originals readable; failures defer retry for an hour.
+
+Checks: `pnpm --dir apps/api smoke:briefs` and `pnpm --dir apps/api smoke:categories`
+use an isolated in-memory PostgreSQL database and do not call Gemini.
 
 ## Deployment
 

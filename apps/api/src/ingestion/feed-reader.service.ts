@@ -24,6 +24,41 @@ function isAbsoluteHttpUrl(value: string): boolean {
   }
 }
 
+function decodeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&#x([0-9a-f]+);?/gi, (_, code: string) =>
+      String.fromCodePoint(Number.parseInt(code, 16)),
+    )
+    .replace(/&#(\d+);?/g, (_, code: string) =>
+      String.fromCodePoint(Number.parseInt(code, 10)),
+    )
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'");
+}
+
+function getHtmlImageUrls(html: string | undefined): string[] {
+  if (!html) return [];
+
+  const urls: string[] = [];
+  const imageTags = html.match(/<img\b[^>]*>/gi) ?? [];
+
+  for (const tag of imageTags) {
+    for (const attribute of ['src', 'data-src']) {
+      const match = tag.match(
+        new RegExp(
+          `\\b${attribute}\\s*=\\s*(?:"([^"]+)"|'([^']+)'|([^\\s>]+))`,
+          'i',
+        ),
+      );
+      const value = match?.[1] ?? match?.[2] ?? match?.[3];
+      if (value) urls.push(decodeHtmlAttribute(value));
+    }
+  }
+
+  return urls;
+}
+
 function getImageUrl(item: ParsedFeedItem): string | null {
   const candidates = [
     ...(item.mediaThumbnail ?? []).map((entry) => entry.$?.url),
@@ -37,6 +72,8 @@ function getImageUrl(item: ParsedFeedItem): string | null {
     item.enclosure?.type?.toLowerCase().startsWith('image/')
       ? item.enclosure.url
       : undefined,
+    ...getHtmlImageUrls(item.contentEncoded),
+    ...getHtmlImageUrls(item.content),
   ];
   return candidates.find((value) => value && isAbsoluteHttpUrl(value)) ?? null;
 }

@@ -42,6 +42,56 @@ const createRedis = () => ({
 });
 
 describe('ArticlesCacheService', () => {
+  it('keeps category pages separate and invalidates every category after ingestion', async () => {
+    const values = new Map<string, string>();
+    const redis = {
+      get: (key: string) => Promise.resolve(values.get(key) ?? null),
+      set: (key: string, value: string) => {
+        values.set(key, value);
+        return Promise.resolve();
+      },
+      increment: (key: string) => {
+        const version = Number(values.get(key) ?? '0') + 1;
+        values.set(key, String(version));
+        return Promise.resolve(version);
+      },
+    };
+    const cache = new ArticlesCacheService(redis as never);
+    const products = {
+      ...page,
+      items: [{ ...article, id: 43, categories: ['Products'] }],
+    };
+    await cache.setList({ ...query, category: 'AI' }, page);
+    await cache.setList({ ...query, category: 'Products' }, products);
+    await expect(cache.getList({ ...query, category: 'AI' })).resolves.toEqual(
+      page,
+    );
+    await expect(
+      cache.getList({ ...query, category: 'Products' }),
+    ).resolves.toEqual(products);
+    await expect(cache.getList(query)).resolves.toBeNull();
+    await cache.invalidateArticles();
+    await expect(
+      cache.getList({ ...query, category: 'AI' }),
+    ).resolves.toBeNull();
+    await expect(
+      cache.getList({ ...query, category: 'Products' }),
+    ).resolves.toBeNull();
+  });
+
+  it('does not reuse pre-normalization detail cache', async () => {
+    const values = new Map([
+      ['articles:v1:version', '0'],
+      [
+        'articles:v1:0:detail:42',
+        JSON.stringify({ ...article, categories: ['Reviews'] }),
+      ],
+    ]);
+    const cache = new ArticlesCacheService({
+      get: (key: string) => Promise.resolve(values.get(key) ?? null),
+    } as never);
+    await expect(cache.getDetail(42)).resolves.toBeNull();
+  });
   it('reads a valid list from the current cache namespace', async () => {
     const redis = createRedis();
     redis.get
@@ -50,10 +100,10 @@ describe('ArticlesCacheService', () => {
     const cache = new ArticlesCacheService(redis as never);
 
     await expect(cache.getList(query)).resolves.toEqual(page);
-    expect(redis.get).toHaveBeenNthCalledWith(1, 'articles:v1:version');
+    expect(redis.get).toHaveBeenNthCalledWith(1, 'articles:v3:version');
     expect(redis.get).toHaveBeenNthCalledWith(
       2,
-      'articles:v1:2:list:{"page":1,"limit":20,"sourceId":null,"from":null,"to":null}',
+      'articles:v3:2:list:{"page":1,"limit":20,"sourceId":null,"from":null,"to":null}',
     );
   });
 
@@ -65,7 +115,7 @@ describe('ArticlesCacheService', () => {
 
     await expect(cache.setList(query, page)).resolves.toBeUndefined();
     expect(redis.set).toHaveBeenCalledWith(
-      'articles:v1:0:list:{"page":1,"limit":20,"sourceId":null,"from":null,"to":null}',
+      'articles:v3:0:list:{"page":1,"limit":20,"sourceId":null,"from":null,"to":null}',
       JSON.stringify(page),
       60,
     );
@@ -79,7 +129,7 @@ describe('ArticlesCacheService', () => {
     const cache = new ArticlesCacheService(redis as never);
 
     await expect(cache.getDetail(42)).resolves.toEqual(article);
-    expect(redis.get).toHaveBeenNthCalledWith(2, 'articles:v1:3:detail:42');
+    expect(redis.get).toHaveBeenNthCalledWith(2, 'articles:v3:3:detail:42');
   });
 
   it('treats malformed cached data as a cache miss', async () => {
@@ -107,6 +157,6 @@ describe('ArticlesCacheService', () => {
 
     await expect(cache.setDetail(42, article)).resolves.toBeUndefined();
     await expect(cache.invalidateArticles()).resolves.toBeUndefined();
-    expect(redis.increment).toHaveBeenCalledWith('articles:v1:version');
+    expect(redis.increment).toHaveBeenCalledWith('articles:v3:version');
   });
 });

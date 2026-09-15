@@ -66,6 +66,7 @@ export class ArticlesQueryService {
       sourceId: dto.sourceId ?? null,
       from: dto.from ?? null,
       to: dto.to ?? null,
+      ...(dto.category?.trim() ? { category: dto.category.trim() } : {}),
     };
   }
 }

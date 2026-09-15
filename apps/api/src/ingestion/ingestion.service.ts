@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { ArticleBriefService } from '../articles/article-brief.service';
 import {
   ArticlePersistenceError,
   ArticlePersistenceService,
@@ -20,6 +21,7 @@ export class IngestionService {
     private readonly feedReader: FeedReaderService,
     private readonly persistence: ArticlePersistenceService,
     private readonly articlesCache: ArticlesCacheService,
+    @Optional() private readonly briefs?: ArticleBriefService,
   ) {}
 
   async run(): Promise<IngestionResponse> {
@@ -106,6 +108,12 @@ export class IngestionService {
       await this.articlesCache.invalidateArticles();
     }
 
+    let enrichment: IngestionResponse['enrichment'];
+    if (successfulSources > 0 && this.briefs) {
+      try { enrichment = await this.briefs.run(); }
+      catch { enrichment = { status: 'partial', processed: 0, failed: 1, error: 'BRIEF_FAILED' }; }
+    }
+
     const status =
       failedSources === 0
         ? 'completed'
@@ -115,6 +123,7 @@ export class IngestionService {
 
     return {
       status,
+      ...(enrichment ? { enrichment } : {}),
       summary: {
         totalSources: sourceResults.length,
         successfulSources,

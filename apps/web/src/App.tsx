@@ -1,6 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type { MouseEvent } from 'react'
 import './App.css'
 import { Feed } from './Feed'
+import { ArticleReader } from './ArticleReader'
+
+function subscribeToLocation(callback: () => void) {
+  window.addEventListener('popstate', callback)
+  return () => window.removeEventListener('popstate', callback)
+}
+
+function getPath() { return window.location.pathname }
 
 type Theme = 'light' | 'dark'
 type Locale = 'en' | 'vi'
@@ -33,9 +42,33 @@ function getPreferredTheme(): Theme {
 }
 
 function App() {
+  const path = useSyncExternalStore(subscribeToLocation, getPath)
+  const articleId = /^\/articles\/(\d+)\/?$/.exec(path)?.[1]
+  const feedScroll = useRef(0)
+  const lastArticle = useRef<HTMLAnchorElement | null>(null)
   const [theme, setTheme] = useState<Theme>(getPreferredTheme)
   const [locale, setLocale] = useState<Locale>('en')
   const text = copy[locale]
+
+  function navigate(event: MouseEvent<HTMLElement>) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    const link = (event.target as Element).closest<HTMLAnchorElement>('a[href]')
+    if (!link || link.target || link.hasAttribute('download')) return
+    const url = new URL(link.href)
+    if (url.origin !== window.location.origin || (url.pathname !== '/' && !/^\/articles\/\d+\/?$/.test(url.pathname))) return
+    event.preventDefault()
+    if (!articleId) {
+      feedScroll.current = window.scrollY
+      lastArticle.current = link
+    }
+    window.history.pushState(null, '', url.pathname + url.search + url.hash)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
+
+  useEffect(() => {
+    window.scrollTo(0, articleId ? 0 : feedScroll.current)
+    if (!articleId) lastArticle.current?.focus({ preventScroll: true })
+  }, [articleId])
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -49,7 +82,7 @@ function App() {
   const nextLocale = locale === 'en' ? 'vi' : 'en'
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" onClick={navigate}>
       <header className="masthead">
         <a className="brand" href="/" aria-label={text.brand}>
           <span className="brand-mark" aria-hidden="true">T</span>
@@ -78,12 +111,15 @@ function App() {
         </div>
       </header>
 
+      <div hidden={!!articleId}>
       <section className="brief-intro" aria-labelledby="brief-title">
         <p className="eyebrow">{text.brand}</p>
         <h1 id="brief-title">{text.title}</h1>
         <p>{text.subtitle}</p>
       </section>
       <Feed locale={locale} />
+      </div>
+      {articleId && <ArticleReader key={articleId} id={articleId} locale={locale} />}
     </main>
   )
 }
