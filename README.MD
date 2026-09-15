@@ -7,10 +7,14 @@ and presents a source-linked daily brief readable in 1–3 minutes.
 
 ## Current status
 
-Day 9 — image-aware feed, EN/VI labels, theme controls, and responsive layout.
-Local database migrations and persistence smoke verification pass. Browser QA
-confirms the feed reads from the real API; the current database contains fixture
-content. Image fallback and pagination were checked using the separate QA feed.
+TechBrief MVP is complete and runs locally. The current version includes an
+image-aware feed, EN/VI labels, theme controls, responsive layout, PostgreSQL
+persistence, Redis caching, RSS/Atom ingestion, cross-source deduplication, and
+scheduled ingestion.
+
+The project is currently optimized for project-based learning and personal
+local use. Public deployment, production monitoring, database backups, and
+multi-process scheduling are future work.
 
 ## Stack
 
@@ -49,6 +53,48 @@ TechBrief uses PostgreSQL and Redis for local development.
    ```powershell
    docker compose down
    ```
+
+## Run the MVP locally
+
+Start PostgreSQL and Redis first:
+
+```powershell
+docker compose up -d
+```
+
+In one terminal, migrate the database and start the API:
+
+```powershell
+pnpm --dir apps/api db:migrate
+pnpm --dir apps/api start:dev
+```
+
+In another terminal, start the web app:
+
+```powershell
+pnpm --dir apps/web dev
+```
+
+Open the Vite URL shown in the terminal, usually `http://localhost:5173`.
+The API is available at `http://localhost:3000`.
+
+Stop the local infrastructure when finished:
+
+```powershell
+docker compose down
+```
+
+## Completion boundary
+
+The MVP is considered complete when the application can be started locally,
+read articles from PostgreSQL through the API, use Redis for caching, ingest
+registered RSS/Atom sources, and render the feed in the web app. The current
+database may contain fixture content until real sources are registered.
+
+The next optional phase is public deployment using a free-tier static host for
+the web app, a free web service for the API, and managed free-tier PostgreSQL
+and Redis. That phase requires cloud environment variables, CORS configuration,
+and an external trigger for ingestion when the free API service is idle.
 
 ## API development
 
