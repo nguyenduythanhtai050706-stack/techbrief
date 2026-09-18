@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { articleContent } from './article-content';
 
 export type Article = {
@@ -118,6 +118,7 @@ export function Feed({ locale }: { locale: "vi" | "en" }) {
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [category, setCategory] = useState<CategoryFilter>("");
+  const ingestionPromise = useRef<Promise<void> | null>(null);
   const text = labels[locale];
 
   function changeCategory(next: CategoryFilter) {
@@ -133,28 +134,48 @@ export function Feed({ locale }: { locale: "vi" | "en" }) {
     const controller = new AbortController();
     const base = (import.meta.env.VITE_API_URL ?? "/api").replace(/\/$/, "");
     const categoryQuery = category ? `&category=${encodeURIComponent(category)}` : "";
-    fetch(`${base}/articles?page=${page}&limit=12${categoryQuery}`, {
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Request failed");
-        const data: Page = await response.json();
-        if (!Array.isArray(data.items) || !Number.isInteger(data.totalPages))
-          throw new Error("Invalid response");
-        if (controller.signal.aborted) return;
-        setItems((previous) =>
-          page === 1
-            ? data.items
-            : [
-                ...previous,
-                ...data.items.filter(
-                  (item) =>
-                    !previous.some((existing) => existing.id === item.id),
-                ),
-              ],
-        );
-        setTotalPages(data.totalPages);
-      })
+    if (page === 1 && !ingestionPromise.current) {
+      ingestionPromise.current = fetch(`${base}/ingestion/run`, {
+        method: "POST",
+      }).then((response) => {
+        if (!response.ok) throw new Error("Ingestion failed");
+      });
+    }
+
+    async function loadArticles() {
+      if (page === 1 && ingestionPromise.current) {
+        try {
+          await ingestionPromise.current;
+        } catch (ingestionError) {
+          if (controller.signal.aborted) return;
+          console.warn("Could not refresh the feed before loading articles", ingestionError);
+        }
+      }
+
+      const response = await fetch(
+        `${base}/articles?page=${page}&limit=12${categoryQuery}`,
+        { signal: controller.signal },
+      );
+      if (!response.ok) throw new Error("Request failed");
+      const data: Page = await response.json();
+      if (!Array.isArray(data.items) || !Number.isInteger(data.totalPages))
+        throw new Error("Invalid response");
+      if (controller.signal.aborted) return;
+      setItems((previous) =>
+        page === 1
+          ? data.items
+          : [
+              ...previous,
+              ...data.items.filter(
+                (item) =>
+                  !previous.some((existing) => existing.id === item.id),
+              ),
+            ],
+      );
+      setTotalPages(data.totalPages);
+    }
+
+    loadArticles()
       .catch(() => {
         if (!controller.signal.aborted) setError(true);
       })
