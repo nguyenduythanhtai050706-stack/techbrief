@@ -14,13 +14,22 @@ const response = {
 } as const;
 
 const createConfig = (values: Record<string, string> = {}) => ({
-  get: jest.fn((key: string, defaultValue: string) => values[key] ?? defaultValue),
+  get: jest.fn(
+    (key: string, defaultValue: string) => values[key] ?? defaultValue,
+  ),
 });
 
-const createRegistry = () => ({
-  addCronJob: jest.fn(),
-  deleteCronJob: jest.fn(),
-});
+const createRegistry = () => {
+  let addedJob: CronJob | undefined;
+  return {
+    addCronJob: jest.fn((_name: string, job: CronJob) => {
+      addedJob = job;
+    }),
+    deleteCronJob: jest.fn(() => undefined),
+    doesExist: jest.fn(() => true),
+    addedJob: () => addedJob,
+  };
+};
 
 describe('IngestionSchedulerService', () => {
   it('does not register a job when scheduling is disabled', async () => {
@@ -59,7 +68,9 @@ describe('IngestionSchedulerService', () => {
       'techbrief-ingestion',
       expect.any(CronJob),
     );
-    const job = registry.addCronJob.mock.calls[0][1] as CronJob;
+    const job = registry.addedJob();
+    expect(job).toBeDefined();
+    if (!job) throw new Error('Expected scheduler job');
     expect(job.cronTime.source).toBe(expression);
 
     await scheduler.onApplicationShutdown();
@@ -79,6 +90,22 @@ describe('IngestionSchedulerService', () => {
     await scheduler.runScheduledIngestion();
 
     expect(ingestion.run).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not delete a cron job already removed by framework shutdown', async () => {
+    const config = createConfig();
+    const registry = createRegistry();
+    registry.doesExist.mockReturnValue(false);
+    const scheduler = new IngestionSchedulerService(
+      config as never,
+      registry as never,
+      { run: jest.fn() } as never,
+    );
+
+    scheduler.onApplicationBootstrap();
+    await expect(scheduler.onApplicationShutdown()).resolves.toBeUndefined();
+
+    expect(registry.deleteCronJob).not.toHaveBeenCalled();
   });
 
   it('logs and absorbs an ingestion failure', async () => {
@@ -105,7 +132,10 @@ describe('IngestionSchedulerService', () => {
     const config = createConfig();
     const registry = createRegistry();
     const ingestion = {
-      run: jest.fn().mockReturnValueOnce(pendingRun).mockResolvedValue(response),
+      run: jest
+        .fn()
+        .mockReturnValueOnce(pendingRun)
+        .mockResolvedValue(response),
     };
     const scheduler = new IngestionSchedulerService(
       config as never,

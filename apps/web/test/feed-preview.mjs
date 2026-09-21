@@ -20,7 +20,23 @@ server.middlewares.use('/api/articles', (req, res) => {
       res.statusCode = 404;
       res.end(JSON.stringify({ message: 'Article not found' }));
     } else {
-      res.end(JSON.stringify({ id, title: `Sample story ${id} — technology and everyday life`, canonicalUrl: 'https://example.com/', summary: '<p>A sample summary for checking the reading layout.</p>', sources: [{ id: 1, name: 'QA source' }] }));
+      const base = { id, title: `Sample story ${id} — technology and everyday life`, canonicalUrl: 'https://example.com/', summary: '<p>A sample summary for checking the reading layout.</p>', sources: [{ id: 1, name: 'QA source' }] };
+      const v2 = id === 1 || id === 2 || id === 5 ? {
+        schemaVersion: 2,
+        en: { title: `Evidence-rich story ${id}`, feedSummary: 'A short feed summary.', summary: id === 2 ? 'The available source provides limited information about this announcement.' : 'The detailed summary explains the event, its context, its practical impact, and the boundaries of what the available reporting can establish without adding unsupported claims.', keyPoints: [
+          { text: 'The announcement is supported by the cited source.', evidenceIds: ['E1'] },
+          { text: 'The scope and limitations remain explicit.', evidenceIds: ['E1'] },
+          { text: 'No unsupported number is introduced.', evidenceIds: ['E1'] },
+        ] },
+        vi: { title: `Bài có dẫn chứng ${id}`, feedSummary: 'Một bản tóm tắt ngắn cho dòng tin.', summary: id === 2 ? 'Nguồn hiện có chỉ cung cấp thông tin giới hạn về thông báo này.' : 'Bản tóm tắt chi tiết trình bày sự kiện, bối cảnh, tác động thực tế và giới hạn của thông tin hiện có mà không bổ sung nhận định thiếu căn cứ.', keyPoints: [
+          { text: 'Thông báo được hỗ trợ bởi nguồn dẫn chứng.', evidenceIds: ['E1'] },
+          { text: 'Phạm vi và giới hạn được nêu rõ.', evidenceIds: ['E1'] },
+          { text: 'Không bổ sung số liệu thiếu căn cứ.', evidenceIds: ['E1'] },
+        ] },
+        evidence: [{ id: 'E1', sourceId: 1, sourceName: 'QA source', sourceUrl: id === 5 ? 'javascript:alert(1)' : 'https://example.com/evidence' }],
+        evidenceLevel: id === 2 ? 'limited' : 'rich',
+      } : undefined;
+      res.end(JSON.stringify({ ...base, ...(v2 ? { translations: v2 } : id === 3 ? { translations: { en: { title: 'V1 story', summary: 'V1 summary.' }, vi: { title: 'Bài V1', summary: 'Tóm tắt V1.' } } } : {}) }));
     }
     return;
   }

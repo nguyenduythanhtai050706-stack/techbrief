@@ -17,6 +17,7 @@
     "smoke:briefs": "ts-node -r tsconfig-paths/register test/briefs-smoke.ts",
     "smoke:persistence": "ts-node -r tsconfig-paths/register test/persistence-smoke.ts",
     "smoke:categories": "ts-node -r tsconfig-paths/register test/categories-smoke.ts",
+    "evaluate:briefs": "ts-node -r tsconfig-paths/register test/brief-v2-evaluation.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",

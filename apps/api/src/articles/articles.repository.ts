@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
 import type {
   ArticleListQuery,
@@ -198,12 +199,46 @@ export class ArticlesRepository {
     articleId: number,
     input: ArticlePersistenceInput,
   ): Promise<void> {
+    const sourceTextHash = input.sourceText
+      ? createHash('sha256').update(input.sourceText).digest('hex')
+      : null;
     await this.database.query(
-      `INSERT INTO article_sources (article_id, source_id, external_id)
-       VALUES ($1, $2, $3)
+      `INSERT INTO article_sources (
+        article_id, source_id, external_id, article_url,
+        source_text, source_text_kind, source_text_hash
+      )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (article_id, source_id, external_id)
-       DO UPDATE SET last_seen_at = NOW()`,
-      [articleId, input.sourceId, input.externalId],
+       DO UPDATE SET
+         last_seen_at = NOW(),
+         article_url = EXCLUDED.article_url,
+         source_text = CASE
+           WHEN EXCLUDED.source_text_hash IS NOT NULL
+             AND article_sources.source_text_hash IS DISTINCT FROM EXCLUDED.source_text_hash
+             THEN EXCLUDED.source_text
+           ELSE article_sources.source_text
+         END,
+         source_text_kind = CASE
+           WHEN EXCLUDED.source_text_hash IS NOT NULL
+             AND article_sources.source_text_hash IS DISTINCT FROM EXCLUDED.source_text_hash
+             THEN EXCLUDED.source_text_kind
+           ELSE article_sources.source_text_kind
+         END,
+         source_text_hash = CASE
+           WHEN EXCLUDED.source_text_hash IS NOT NULL
+             AND article_sources.source_text_hash IS DISTINCT FROM EXCLUDED.source_text_hash
+             THEN EXCLUDED.source_text_hash
+           ELSE article_sources.source_text_hash
+         END`,
+      [
+        articleId,
+        input.sourceId,
+        input.externalId,
+        input.url,
+        input.sourceText,
+        input.sourceTextKind,
+        sourceTextHash,
+      ],
     );
   }
 

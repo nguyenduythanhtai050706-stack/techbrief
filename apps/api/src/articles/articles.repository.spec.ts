@@ -13,6 +13,8 @@ const input: ArticlePersistenceInput = {
   contentFingerprint: 'a'.repeat(64),
   summary:
     'Useful article content that is long enough to support a fingerprint.',
+  sourceText: 'Useful article evidence with 50% verified growth.',
+  sourceTextKind: 'rss_full',
   publishedAt: null,
   author: 'Ada Lovelace',
   categories: ['AI'],
@@ -63,11 +65,9 @@ describe('ArticlesRepository', () => {
 
   it('fills a missing image on repeat ingestion from the same canonical URL', async () => {
     const database = {
-      query: jest
-        .fn()
-        .mockResolvedValue({
-          rows: [{ id: 42, canonical_url: input.canonicalUrl }],
-        }),
+      query: jest.fn().mockResolvedValue({
+        rows: [{ id: 42, canonical_url: input.canonicalUrl }],
+      }),
     };
     const repository = new ArticlesRepository(database as never);
     await repository.persist({
@@ -108,7 +108,15 @@ describe('ArticlesRepository', () => {
       expect.stringContaining(
         'ON CONFLICT (article_id, source_id, external_id)',
       ),
-      [41, input.sourceId, input.externalId],
+      [
+        41,
+        input.sourceId,
+        input.externalId,
+        input.url,
+        input.sourceText,
+        input.sourceTextKind,
+        expect.stringMatching(/^[a-f0-9]{64}$/),
+      ],
     );
   });
 
@@ -139,7 +147,15 @@ describe('ArticlesRepository', () => {
       expect.stringContaining(
         'ON CONFLICT (article_id, source_id, external_id)',
       ),
-      [41, input.sourceId, input.externalId],
+      [
+        41,
+        input.sourceId,
+        input.externalId,
+        input.url,
+        input.sourceText,
+        input.sourceTextKind,
+        expect.stringMatching(/^[a-f0-9]{64}$/),
+      ],
     );
     expect(database.query).not.toHaveBeenCalledWith(
       expect.stringContaining('UPDATE articles SET title'),
@@ -240,12 +256,22 @@ describe('ArticlesRepository', () => {
     ).resolves.toBe('duplicate');
 
     expect(database.query).toHaveBeenCalledWith(
-      expect.stringContaining('INTERVAL \'12 hours\''),
+      expect.stringContaining("INTERVAL '12 hours'"),
       ['2026-09-15T07:00:00.000Z', 13],
     );
     expect(database.query).toHaveBeenCalledWith(
-      expect.stringContaining('ON CONFLICT (article_id, source_id, external_id)'),
-      [66, 13, input.externalId],
+      expect.stringContaining(
+        'ON CONFLICT (article_id, source_id, external_id)',
+      ),
+      [
+        66,
+        13,
+        input.externalId,
+        'https://www.engadget.com/volvo-story',
+        input.sourceText,
+        input.sourceTextKind,
+        expect.stringMatching(/^[a-f0-9]{64}$/),
+      ],
     );
   });
 

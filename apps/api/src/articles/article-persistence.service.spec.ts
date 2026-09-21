@@ -5,6 +5,8 @@ const preview = {
   title: 'AI Guide',
   url: 'https://news.example/article',
   summary: null,
+  sourceText: null,
+  sourceTextKind: 'unavailable' as const,
   publishedAt: null,
   author: null,
   categories: [],
@@ -20,22 +22,34 @@ describe('ArticlePersistenceService', () => {
     const deduplicator = { prepare: jest.fn().mockReturnValue(prepared) };
     const repository = { persist: jest.fn().mockResolvedValue('inserted') };
     const service = new ArticlePersistenceService(
-      deduplicator as never,
+      deduplicator,
       repository as never,
     );
 
     await expect(service.persist(7, preview)).resolves.toBe('inserted');
-    expect(repository.persist).toHaveBeenCalledWith({ ...prepared, sourceId: 7 });
+    expect(repository.persist).toHaveBeenCalledWith({
+      ...prepared,
+      sourceId: 7,
+    });
   });
 
   it('maps database failures to PERSIST_FAILED', async () => {
     const deduplicator = { prepare: jest.fn().mockReturnValue(preview) };
     const repository = {
-      persist: jest.fn().mockRejectedValue(Object.assign(new Error('offline'), { code: '08006' })),
+      persist: jest
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error('offline'), { code: '08006' }),
+        ),
     };
-    const service = new ArticlePersistenceService(deduplicator as never, repository as never);
+    const service = new ArticlePersistenceService(
+      deduplicator,
+      repository as never,
+    );
 
-    await expect(service.persist(7, preview)).rejects.toMatchObject({ code: 'PERSIST_FAILED' });
+    await expect(service.persist(7, preview)).rejects.toMatchObject({
+      code: 'PERSIST_FAILED',
+    });
   });
 
   it('rethrows programming errors unchanged', async () => {
@@ -45,7 +59,7 @@ describe('ArticlePersistenceService', () => {
       persist: jest.fn().mockRejectedValue(programmingError),
     };
     const service = new ArticlePersistenceService(
-      deduplicator as never,
+      deduplicator,
       repository as never,
     );
 

@@ -13,7 +13,9 @@ export interface ParsedFeedItem {
   author?: string;
   categories?: string[];
   enclosure?: { url?: string; type?: string };
-  mediaContent?: Array<{ $?: { url?: string; type?: string; medium?: string } }>;
+  mediaContent?: Array<{
+    $?: { url?: string; type?: string; medium?: string };
+  }>;
   mediaThumbnail?: Array<{ $?: { url?: string } }>;
 }
 
@@ -30,6 +32,8 @@ export interface NormalizedArticlePreview {
   title: string;
   url: string;
   summary: string | null;
+  sourceText: string | null;
+  sourceTextKind: 'rss_full' | 'rss_excerpt' | 'page' | 'unavailable';
   publishedAt: string | null;
   author: string | null;
   categories: string[];
@@ -63,8 +67,7 @@ export interface IngestionErrorSourceResult {
 }
 
 export type IngestionSourceResult =
-  | IngestionSuccessSourceResult
-  | IngestionErrorSourceResult;
+  IngestionSuccessSourceResult | IngestionErrorSourceResult;
 
 export interface IngestionResponse {
   enrichment?: import('../articles/article-brief.service').BriefRunResult;

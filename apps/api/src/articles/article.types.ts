@@ -1,4 +1,5 @@
 import type { NormalizedArticlePreview } from '../ingestion/ingestion.types';
+import type { BriefEvidence, LocalizedBriefV2 } from './article-brief.types';
 
 export interface PreparedArticle extends NormalizedArticlePreview {
   canonicalUrl: string;
@@ -33,7 +34,15 @@ export interface ArticleSourceView {
 }
 
 export interface ArticleView {
-  translations?: Record<'en' | 'vi', { title: string; summary: string }>;
+  translations?:
+    | Record<'en' | 'vi', { title: string; summary: string }>
+    | {
+        schemaVersion: 2;
+        en: LocalizedBriefV2;
+        vi: LocalizedBriefV2;
+        evidence: BriefEvidence[];
+        evidenceLevel: 'rich' | 'limited';
+      };
   id: number;
   canonicalUrl: string;
   title: string;

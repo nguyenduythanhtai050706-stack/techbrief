@@ -11,6 +11,7 @@ import type {
   IngestionResponse,
   IngestionSourceResult,
 } from './ingestion.types';
+import { ArticleEvidenceFetcher } from './article-evidence-fetcher';
 
 @Injectable()
 export class IngestionService {
@@ -22,6 +23,7 @@ export class IngestionService {
     private readonly persistence: ArticlePersistenceService,
     private readonly articlesCache: ArticlesCacheService,
     @Optional() private readonly briefs?: ArticleBriefService,
+    @Optional() private readonly evidenceFetcher?: ArticleEvidenceFetcher,
   ) {}
 
   async run(): Promise<IngestionResponse> {
@@ -39,8 +41,15 @@ export class IngestionService {
         try {
           let insertedItems = 0;
           let duplicateItems = 0;
+          const items = this.evidenceFetcher
+            ? await Promise.all(
+                result.value.items.map((preview) =>
+                  this.evidenceFetcher!.enrich(preview, source.url),
+                ),
+              )
+            : result.value.items;
 
-          for (const preview of result.value.items) {
+          for (const preview of items) {
             const outcome = await this.persistence.persist(source.id, preview);
             if (outcome === 'inserted') insertedItems += 1;
             else duplicateItems += 1;
@@ -51,7 +60,7 @@ export class IngestionService {
             sourceName: source.name,
             sourceUrl: source.url,
             status: 'ok',
-            items: result.value.items,
+            items,
             skippedItems: result.value.skippedItems,
             insertedItems,
             duplicateItems,
@@ -110,8 +119,16 @@ export class IngestionService {
 
     let enrichment: IngestionResponse['enrichment'];
     if (successfulSources > 0 && this.briefs) {
-      try { enrichment = await this.briefs.run(); }
-      catch { enrichment = { status: 'partial', processed: 0, failed: 1, error: 'BRIEF_FAILED' }; }
+      try {
+        enrichment = await this.briefs.run();
+      } catch {
+        enrichment = {
+          status: 'partial',
+          processed: 0,
+          failed: 1,
+          error: 'BRIEF_FAILED',
+        };
+      }
     }
 
     const status =

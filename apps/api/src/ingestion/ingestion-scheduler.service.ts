@@ -43,7 +43,9 @@ export class IngestionSchedulerService
     if (!this.job) return;
 
     await this.job.stop();
-    this.schedulerRegistry.deleteCronJob(JOB_NAME);
+    if (this.schedulerRegistry.doesExist('cron', JOB_NAME)) {
+      this.schedulerRegistry.deleteCronJob(JOB_NAME);
+    }
     this.job = undefined;
   }
 

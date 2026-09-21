@@ -4,8 +4,10 @@ import type {
   FeedErrorCode,
   FeedParser,
   FeedReadResult,
+  NormalizedArticlePreview,
   ParsedFeedItem,
 } from './ingestion.types';
+import { normalizeSourceText } from './source-text';
 
 @Injectable()
 export class FeedReaderError extends Error {
@@ -106,7 +108,7 @@ export class FeedReaderService {
       throw new FeedReaderError('INVALID_FEED');
     }
 
-    const items = [];
+    const items: NormalizedArticlePreview[] = [];
     let skippedItems = 0;
 
     for (const item of feed.items.slice(0, 50)) {
@@ -120,12 +122,23 @@ export class FeedReaderService {
         parsedDate && !Number.isNaN(parsedDate.getTime())
           ? parsedDate.toISOString()
           : null;
+      const fullSourceText =
+        normalizeSourceText(item.contentEncoded) ??
+        normalizeSourceText(item.content);
+      const excerptSourceText = normalizeSourceText(item.contentSnippet);
+      const sourceText = fullSourceText ?? excerptSourceText;
 
       items.push({
         externalId: item.guid || item.link,
         title: item.title,
         url: item.link,
         summary: item.contentSnippet ?? item.content ?? null,
+        sourceText,
+        sourceTextKind: fullSourceText
+          ? 'rss_full'
+          : excerptSourceText
+            ? 'rss_excerpt'
+            : 'unavailable',
         publishedAt,
         author: item.creator ?? item.author ?? null,
         categories: item.categories ?? [],

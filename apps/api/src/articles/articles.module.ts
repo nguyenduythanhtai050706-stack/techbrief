@@ -11,18 +11,26 @@ import { ConfigModule } from '@nestjs/config';
 import { ArticleBriefRepository } from './article-brief.repository';
 import { ArticleBriefService } from './article-brief.service';
 import { GeminiBriefService } from './gemini-brief.service';
+import { ArticleEvidenceService } from './article-evidence.service';
 
 @Module({
   imports: [ConfigModule, DatabaseModule, RedisModule],
   controllers: [ArticlesController],
   providers: [
-    ArticleBriefRepository, ArticleBriefService, GeminiBriefService,
+    ArticleBriefRepository,
+    ArticleBriefService,
+    GeminiBriefService,
+    ArticleEvidenceService,
     ArticleDeduplicator,
     ArticlesRepository,
     ArticlePersistenceService,
     ArticlesCacheService,
     ArticlesQueryService,
   ],
-  exports: [ArticlePersistenceService, ArticlesCacheService, ArticleBriefService],
+  exports: [
+    ArticlePersistenceService,
+    ArticlesCacheService,
+    ArticleBriefService,
+  ],
 })
 export class ArticlesModule {}

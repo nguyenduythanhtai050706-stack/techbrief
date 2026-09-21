@@ -7,6 +7,8 @@ import { IngestionController } from './ingestion.controller';
 import { IngestionSchedulerService } from './ingestion-scheduler.service';
 import { FeedReaderService } from './feed-reader.service';
 import { IngestionService } from './ingestion.service';
+import { ArticleContentExtractor } from './article-content-extractor';
+import { ArticleEvidenceFetcher } from './article-evidence-fetcher';
 
 @Module({
   imports: [SourcesModule, ArticlesModule],
@@ -17,6 +19,8 @@ import { IngestionService } from './ingestion.service';
       useFactory: createFeedParser,
     },
     FeedReaderService,
+    ArticleContentExtractor,
+    ArticleEvidenceFetcher,
     IngestionService,
     IngestionSchedulerService,
   ],

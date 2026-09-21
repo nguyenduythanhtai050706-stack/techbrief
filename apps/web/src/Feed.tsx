@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { articleContent } from './article-content';
+import { articleContent, safeHttpUrl } from './article-content';
 
 export type Article = {
-  translations?: Record<'en' | 'vi', { title: string; summary: string }>;
+  translations?:
+    | Record<'en' | 'vi', { title: string; summary: string }>
+    | {
+        schemaVersion: 2;
+        en: { title: string; feedSummary: string; summary: string; keyPoints: { text: string; evidenceIds: string[] }[] };
+        vi: { title: string; feedSummary: string; summary: string; keyPoints: { text: string; evidenceIds: string[] }[] };
+        evidence: { id: string; sourceId: number; sourceName: string; sourceUrl: string }[];
+        evidenceLevel: 'rich' | 'limited';
+      };
   id: number;
   canonicalUrl: string;
   title: string;
@@ -45,15 +53,6 @@ const labels = {
   },
 } as const;
 
-function safeUrl(value: string | null | undefined) {
-  try {
-    const url = new URL(value ?? "");
-    return ["https:", "http:"].includes(url.protocol) ? url.href : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 function ArticleCard({
   article,
   locale,
@@ -64,11 +63,11 @@ function ArticleCard({
   lead?: boolean;
 }) {
   const [failedImage, setFailedImage] = useState<string>();
-  const image = safeUrl(article.imageUrl);
-  const href = safeUrl(article.canonicalUrl);
+  const image = safeHttpUrl(article.imageUrl);
+  const href = safeHttpUrl(article.canonicalUrl);
   const content = articleContent(article, locale);
   const summary = new DOMParser()
-    .parseFromString(content.summary ?? "", "text/html")
+    .parseFromString(content.feedSummary ?? "", "text/html")
     .body.textContent?.trim();
   const date = article.publishedAt ? new Date(article.publishedAt) : null;
   return (

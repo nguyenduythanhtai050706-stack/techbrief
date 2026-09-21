@@ -29,6 +29,22 @@
   border-radius: 20px;
 }
 .reader-summary { font-size: 1.1rem; line-height: 1.85; white-space: pre-line; }
+.evidence-level {
+  display: inline-flex;
+  margin: 0 0 12px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.evidence-rich { border-color: var(--accent); color: var(--accent); }
+.reader-key-points ul, .reader-evidence ul { padding-left: 1.25rem; }
+.reader-key-points li { margin: 0 0 18px; line-height: 1.65; }
+.point-sources { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.point-sources a, .reader-evidence a { color: var(--accent); }
+.reader-evidence li { margin-bottom: 8px; }
 
 .app-shell {
   width: min(100% - 32px, 1180px);

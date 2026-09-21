@@ -24,6 +24,8 @@ describe('FeedReaderService', () => {
             title: 'Article 1',
             url: 'https://example.com/article-1',
             summary: null,
+            sourceText: null,
+            sourceTextKind: 'unavailable',
             imageUrl: null,
             publishedAt: null,
             author: null,
@@ -37,6 +39,80 @@ describe('FeedReaderService', () => {
     expect(parser.parseURL).toHaveBeenCalledWith(
       'https://example.com/feed.xml',
     );
+  });
+});
+
+it('prefers encoded content and normalizes unsafe HTML for evidence', async () => {
+  const parser = {
+    parseURL: jest.fn().mockResolvedValue({
+      items: [
+        {
+          link: 'https://example.com/evidence',
+          title: 'Evidence article',
+          contentEncoded:
+            '<style>.hidden{display:none}</style><p>Full &amp; useful text.</p><script>alert(1)</script>',
+          content: '<p>Less complete content</p>',
+          contentSnippet: 'Short excerpt',
+        },
+      ],
+    }),
+  };
+
+  const result = await new FeedReaderService(parser).read(
+    'https://example.com/feed.xml',
+  );
+
+  expect(result.items[0]).toMatchObject({
+    summary: 'Short excerpt',
+    sourceText: 'Full & useful text.',
+    sourceTextKind: 'rss_full',
+  });
+});
+
+it('falls back to a normalized excerpt and caps stored evidence', async () => {
+  const parser = {
+    parseURL: jest.fn().mockResolvedValue({
+      items: [
+        {
+          link: 'https://example.com/excerpt',
+          title: 'Excerpt article',
+          contentSnippet: `<p>${'word '.repeat(10_000)}</p>`,
+        },
+      ],
+    }),
+  };
+
+  const result = await new FeedReaderService(parser).read(
+    'https://example.com/feed.xml',
+  );
+
+  expect(result.items[0].sourceTextKind).toBe('rss_excerpt');
+  expect(result.items[0].sourceText?.length).toBeLessThanOrEqual(32_000);
+  expect(result.items[0].sourceText).not.toContain('<p>');
+});
+
+it('uses content when contentEncoded is present but empty', async () => {
+  const parser = {
+    parseURL: jest.fn().mockResolvedValue({
+      items: [
+        {
+          link: 'https://example.com/content-fallback',
+          title: 'Content fallback',
+          contentEncoded: '   ',
+          content: '<p>Useful Atom content.</p>',
+          contentSnippet: 'Short excerpt',
+        },
+      ],
+    }),
+  };
+
+  const result = await new FeedReaderService(parser).read(
+    'https://example.com/feed.xml',
+  );
+
+  expect(result.items[0]).toMatchObject({
+    sourceText: 'Useful Atom content.',
+    sourceTextKind: 'rss_full',
   });
 });
 
