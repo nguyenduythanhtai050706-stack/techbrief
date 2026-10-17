@@ -1,0 +1,9 @@
+{
+  "fixtureOnly": true,
+  "notRealNews": true,
+  "title": "Acme introduces local debugging for Atlas Cloud",
+  "sourceId": 1,
+  "sourceName": "Synthetic Acme fixture",
+  "sourceUrl": "https://acme.example/debugging",
+  "sourceText": "Acme introduced a local debugging workflow for business developers using Atlas Cloud. The workflow lets developers inspect tool calls before deployment and replay a failed request in a local sandbox. Previously, developers had to deploy a test version to the shared staging environment before inspecting the same calls. According to Acme, the local workflow reduced processing cost by 32% compared with the staging workflow on its internal Helios benchmark. Latency remained at 180 ms in that benchmark. The company did not provide independent verification of the benchmark or details of the workload used. Acme says the sandbox keeps test requests separate from production traffic and lets developers review each tool response before continuing. The initial release is restricted to existing business customers in Singapore. The announcement does not disclose pricing or a schedule for other regions. The reported practical change is that these customers can investigate a failed tool call locally before sending a new test deployment to staging. Acme cautions that the sandbox cannot reproduce every production integration and that developers still need staging checks before deployment."
+}

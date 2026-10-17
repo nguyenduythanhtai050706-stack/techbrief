@@ -119,6 +119,115 @@ describe('validateBriefV2 contract', () => {
     ).toMatchObject({ evidenceLevel: 'limited' });
   });
 
+  it.each(['rich', 'limited'] as const)(
+    'rejects a %s detail padded by repeating the headline',
+    (evidenceLevel) => {
+      const draft = validDraft();
+      draft.en.summary = words(30, `${draft.en.title.toUpperCase()}!`);
+
+      expect(() =>
+        validateBriefV2(draft, { ...context(), evidenceLevel }),
+      ).toThrow('INVALID_BRIEF');
+    },
+  );
+
+  it('rejects a limited detail that only repeats the feed preview', () => {
+    const draft = validDraft();
+    draft.en.feedSummary =
+      'The company announced an update for business users.';
+    draft.en.summary = `${draft.en.feedSummary} ${draft.en.feedSummary}`;
+
+    expect(() =>
+      validateBriefV2(draft, { ...context(), evidenceLevel: 'limited' }),
+    ).toThrow('INVALID_BRIEF');
+  });
+
+  it('rejects a limited detail shorter than its feed preview', () => {
+    const draft = validDraft();
+    draft.en.feedSummary =
+      'The company announced a new tool for business users.';
+    draft.en.summary = 'Business users can inspect calls.';
+
+    expect(() =>
+      validateBriefV2(draft, { ...context(), evidenceLevel: 'limited' }),
+    ).toThrow('INVALID_BRIEF');
+  });
+
+  it.each(['rich', 'limited'] as const)(
+    'requires at least three cited key points for %s evidence',
+    (evidenceLevel) => {
+      const draft = validDraft();
+      draft.vi.keyPoints = draft.vi.keyPoints.slice(0, 2);
+
+      expect(() =>
+        validateBriefV2(draft, { ...context(), evidenceLevel }),
+      ).toThrow('INVALID_BRIEF');
+    },
+  );
+
+  it('rejects duplicate key points even with different casing or punctuation', () => {
+    const draft = validDraft();
+    draft.en.keyPoints[1].text = draft.en.keyPoints[0].text.toUpperCase() + '!';
+
+    expect(() => validateBriefV2(draft, context())).toThrow('INVALID_BRIEF');
+  });
+
+  it('accepts qualitative details without requiring invented statistics', () => {
+    const evidence = context();
+    evidence.evidence[0].text =
+      'The source describes the launch for business users. Pricing was not provided.';
+
+    const result = validateBriefV2(validDraft(), evidence);
+    expect(result.en.keyPoints).toHaveLength(3);
+    expect(result.en.summary).not.toMatch(/\d/);
+  });
+
+  it('allows enough space for an equivalent Vietnamese detail', () => {
+    const draft = validDraft();
+    draft.vi.summary = words(300, 'bối-cảnh');
+
+    expect(() => validateBriefV2(draft, context())).not.toThrow();
+    draft.vi.summary = words(361, 'bối-cảnh');
+    expect(() => validateBriefV2(draft, context())).toThrow('INVALID_BRIEF');
+  });
+
+  it('keeps a useful rich detail when the preview is concise', () => {
+    const draft = validDraft();
+    draft.en.feedSummary = words(25, 'update');
+    expect(() => validateBriefV2(draft, context())).not.toThrow();
+    draft.en.feedSummary = words(24, 'update');
+    expect(() => validateBriefV2(draft, context())).toThrow('INVALID_BRIEF');
+  });
+
+  it('requires numbers in the detail to be supported by linked evidence', () => {
+    const draft = validDraft();
+    draft.en.summary += ' Usage increased by 73%.';
+    draft.vi.summary += ' Mức sử dụng tăng 73%.';
+    const evidence = context();
+    evidence.evidence.push({
+      id: 'E2',
+      sourceId: 2,
+      sourceName: 'Unlinked source',
+      sourceUrl: 'https://other.example/article',
+      text: 'Usage increased by 73%.',
+    });
+
+    expect(() => validateBriefV2(draft, evidence)).toThrow(
+      'INVALID_BRIEF_EVIDENCE',
+    );
+  });
+
+  it('exposes the trusted link when a detail statistic is cited by a key point', () => {
+    const draft = validDraft();
+    draft.en.summary += ' Usage increased by 50%.';
+    draft.vi.summary += ' Mức sử dụng tăng 50%.';
+    draft.en.keyPoints[0].text = 'Usage increased by 50%.';
+    draft.vi.keyPoints[0].text = 'Mức sử dụng tăng 50%.';
+
+    const result = validateBriefV2(draft, context());
+    expect(result.evidence[0].sourceUrl).toBe('https://news.example/article');
+  });
+
   it.each([
     [
       'more than five key points',
@@ -228,5 +337,23 @@ describe('validateBriefV2 contract', () => {
     evidence.evidence[0].text = 'Revenue reached $3.2 billion.';
 
     expect(() => validateBriefV2(draft, evidence)).not.toThrow();
+  });
+
+  it('recognizes translated percentage and millisecond units without changing their values', () => {
+    const draft = validDraft();
+    const evidence = context();
+    evidence.evidence[0].text =
+      'Cost decreased by 32%. Latency remained at 180 ms.';
+    draft.en.keyPoints[0].text =
+      'Cost decreased by 32 percent and latency remained at 180 milliseconds.';
+    draft.vi.keyPoints[0].text =
+      'Chi phí giảm 32 phần trăm và độ trễ giữ nguyên ở mức 180 mili giây.';
+    expect(() => validateBriefV2(draft, evidence)).not.toThrow();
+
+    draft.vi.keyPoints[0].text =
+      'Chi phí giảm 32 phần trăm và độ trễ ở mức 181 mili giây.';
+    expect(() => validateBriefV2(draft, evidence)).toThrow(
+      'INVALID_BRIEF_EVIDENCE',
+    );
   });
 });

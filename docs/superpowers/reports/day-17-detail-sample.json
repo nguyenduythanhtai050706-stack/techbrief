@@ -1,0 +1,142 @@
+{
+  "fixtureOnly": true,
+  "notRealNews": true,
+  "promptVersion": "day-17-v2",
+  "requests": 2,
+  "counts": {
+    "en": {
+      "feedWords": 25,
+      "detailWords": 182,
+      "keyPoints": 4
+    },
+    "vi": {
+      "feedWords": 39,
+      "detailWords": 297,
+      "keyPoints": 4
+    }
+  },
+  "sourceText": "Acme introduced a local debugging workflow for business developers using Atlas Cloud. The workflow lets developers inspect tool calls before deployment and replay a failed request in a local sandbox. Previously, developers had to deploy a test version to the shared staging environment before inspecting the same calls. According to Acme, the local workflow reduced processing cost by 32% compared with the staging workflow on its internal Helios benchmark. Latency remained at 180 ms in that benchmark. The company did not provide independent verification of the benchmark or details of the workload used. Acme says the sandbox keeps test requests separate from production traffic and lets developers review each tool response before continuing. The initial release is restricted to existing business customers in Singapore. The announcement does not disclose pricing or a schedule for other regions. The reported practical change is that these customers can investigate a failed tool call locally before sending a new test deployment to staging. Acme cautions that the sandbox cannot reproduce every production integration and that developers still need staging checks before deployment.",
+  "brief": {
+    "schemaVersion": 2,
+    "en": {
+      "title": "Acme introduces local debugging for Atlas Cloud",
+      "feedSummary": "Acme has officially launched a local debugging workflow for business developers using Atlas Cloud in Singapore, allowing them to inspect tool calls locally before deployment.",
+      "summary": "Acme has introduced a new local debugging workflow for business developers using Atlas Cloud. The initial release is restricted to existing business customers in Singapore. Previously, developers had to deploy a test version to the shared staging environment before inspecting the same calls.\n\nThe practical change is that these customers can investigate a failed tool call locally before sending a new test deployment to staging. The workflow lets developers inspect tool calls before deployment and replay a failed request in a local sandbox. According to Acme, the sandbox keeps test requests separate from production traffic and lets developers review each tool response before continuing.\n\nAccording to Acme, the local workflow reduced processing cost by 32% compared with the staging workflow on its internal Helios benchmark, while latency remained at 180 ms in that benchmark. However, Acme did not provide independent verification of the benchmark or details of the workload used.\n\nAcme cautions that the sandbox cannot reproduce every production integration and that developers still need staging checks before deployment. Additionally, the announcement does not disclose pricing or a schedule for other regions.",
+      "keyPoints": [
+        {
+          "text": "Acme introduced a local debugging workflow for business developers using Atlas Cloud, initially restricted to existing business customers in Singapore.",
+          "evidenceIds": [
+            "E3",
+            "E11"
+          ]
+        },
+        {
+          "text": "The workflow lets developers inspect tool calls before deployment and replay a failed request in a local sandbox.",
+          "evidenceIds": [
+            "E6"
+          ]
+        },
+        {
+          "text": "Acme reported that the local workflow reduced processing cost by 32% compared with the staging workflow on its internal Helios benchmark, with latency remaining at 180 ms.",
+          "evidenceIds": [
+            "E1",
+            "E2"
+          ]
+        },
+        {
+          "text": "The announcement does not disclose pricing, workload details, independent benchmark verification, or a schedule for other regions.",
+          "evidenceIds": [
+            "E2",
+            "E7",
+            "E10"
+          ]
+        }
+      ]
+    },
+    "vi": {
+      "title": "Acme ra mắt tính năng gỡ lỗi cục bộ cho Atlas Cloud",
+      "feedSummary": "Acme đã ra mắt quy trình gỡ lỗi cục bộ cho các nhà phát triển doanh nghiệp sử dụng Atlas Cloud tại Singapore, cho phép họ kiểm tra các lệnh gọi công cụ tại chỗ trước khi triển khai.",
+      "summary": "Acme đã giới thiệu một quy trình gỡ lỗi cục bộ mới dành cho các nhà phát triển doanh nghiệp sử dụng Atlas Cloud. Bản phát hành ban đầu được giới hạn cho các khách hàng doanh nghiệp hiện tại ở Singapore. Trước đây, các nhà phát triển phải triển khai phiên bản thử nghiệm lên môi trường dàn dựng được chia sẻ trước khi kiểm tra các lệnh gọi tương tự.\n\nSự thay đổi thực tế là các khách hàng này có thể điều tra một lệnh gọi công cụ bị lỗi cục bộ trước khi gửi bản triển khai thử nghiệm mới lên môi trường dàn dựng. Quy trình này cho phép các nhà phát triển kiểm tra các lệnh gọi công cụ trước khi triển khai và phát lại một yêu cầu bị lỗi trong hộp cát cục bộ. Theo Acme, hộp cát giữ các yêu cầu thử nghiệm tách biệt với lưu lượng truy cập sản xuất và cho phép các nhà phát triển xem lại phản hồi của từng công cụ trước khi tiếp tục.\n\nTheo Acme, quy trình cục bộ đã giảm 32% chi phí xử lý so với quy trình dàn dựng trên điểm chuẩn nội bộ Helios của họ, trong khi độ trễ giữ nguyên ở mức 180 ms trong điểm chuẩn đó. Tuy nhiên, công ty không cung cấp sự xác minh độc lập về điểm chuẩn hoặc chi tiết về khối lượng công việc đã sử dụng.\n\nAcme cảnh báo rằng hộp cát không thể tái tạo mọi tích hợp sản xuất và các nhà phát triển vẫn cần kiểm tra trên môi trường dàn dựng trước khi triển khai. Ngoài ra, thông báo không tiết lộ giá cả hoặc lịch trình cho các khu vực khác.",
+      "keyPoints": [
+        {
+          "text": "Acme đã giới thiệu quy trình gỡ lỗi cục bộ cho các nhà phát triển doanh nghiệp sử dụng Atlas Cloud, ban đầu giới hạn cho các khách hàng doanh nghiệp hiện tại ở Singapore.",
+          "evidenceIds": [
+            "E3",
+            "E11"
+          ]
+        },
+        {
+          "text": "Quy trình này cho phép các nhà phát triển kiểm tra các lệnh gọi công cụ trước khi triển khai và phát lại một yêu cầu bị lỗi trong hộp cát cục bộ.",
+          "evidenceIds": [
+            "E6"
+          ]
+        },
+        {
+          "text": "Acme báo cáo rằng quy trình cục bộ giảm 32% chi phí xử lý so với quy trình dàn dựng trên điểm chuẩn nội bộ Helios, với độ trễ ở mức 180 ms.",
+          "evidenceIds": [
+            "E1",
+            "E2"
+          ]
+        },
+        {
+          "text": "Thông báo không tiết lộ giá cả, chi tiết khối lượng công việc, xác minh điểm chuẩn độc lập hoặc lịch trình cho các khu vực khác.",
+          "evidenceIds": [
+            "E2",
+            "E7",
+            "E10"
+          ]
+        }
+      ]
+    },
+    "evidence": [
+      {
+        "id": "E3",
+        "sourceId": 1,
+        "sourceName": "Synthetic Acme fixture",
+        "sourceUrl": "https://acme.example/debugging"
+      },
+      {
+        "id": "E11",
+        "sourceId": 1,
+        "sourceName": "Synthetic Acme fixture",
+        "sourceUrl": "https://acme.example/debugging"
+      },
+      {
+        "id": "E6",
+        "sourceId": 1,
+        "sourceName": "Synthetic Acme fixture",
+        "sourceUrl": "https://acme.example/debugging"
+      },
+      {
+        "id": "E1",
+        "sourceId": 1,
+        "sourceName": "Synthetic Acme fixture",
+        "sourceUrl": "https://acme.example/debugging"
+      },
+      {
+        "id": "E2",
+        "sourceId": 1,
+        "sourceName": "Synthetic Acme fixture",
+        "sourceUrl": "https://acme.example/debugging"
+      },
+      {
+        "id": "E7",
+        "sourceId": 1,
+        "sourceName": "Synthetic Acme fixture",
+        "sourceUrl": "https://acme.example/debugging"
+      },
+      {
+        "id": "E10",
+        "sourceId": 1,
+        "sourceName": "Synthetic Acme fixture",
+        "sourceUrl": "https://acme.example/debugging"
+      }
+    ],
+    "categories": [
+      "AI",
+      "Products",
+      "Technology"
+    ],
+    "evidenceLevel": "rich"
+  }
+}

@@ -69,10 +69,26 @@ function wordCount(value: string): number {
   return value.trim().split(/\s+/u).filter(Boolean).length;
 }
 
+function normalizedCopy(value: string): string {
+  return value
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+function addsInformation(detail: string, preview: string): boolean {
+  const previewWords = new Set(normalizedCopy(preview).split(' '));
+  return normalizedCopy(detail)
+    .split(' ')
+    .some((word) => word && !previewWords.has(word));
+}
+
 const unitAliases: Record<string, string> = {
   '%': '%',
   percent: '%',
   percentage: '%',
+  'phần trăm': '%',
   million: 'million',
   triệu: 'million',
   billion: 'billion',
@@ -81,6 +97,9 @@ const unitAliases: Record<string, string> = {
   thousand: 'thousand',
   nghìn: 'thousand',
   ms: 'ms',
+  millisecond: 'ms',
+  milliseconds: 'ms',
+  'mili giây': 'ms',
   gb: 'gb',
   tb: 'tb',
   mhz: 'mhz',
@@ -104,7 +123,7 @@ const unitAliases: Record<string, string> = {
 function numericClaims(value: string): Set<string> {
   const claims = new Set<string>();
   const pattern =
-    /([$€£])?\s*(\d+(?:[.,]\d+)*)\s*(%|percent(?:age)?|million|billion|thousand|triệu|tỷ|tỉ|nghìn|ms|gb|tb|mhz|ghz|hours?|giờ|days?|ngày|weeks?|tuần|months?|tháng|years?)?\s*(USD|EUR|GBP)?/giu;
+    /([$€£])?\s*(\d+(?:[.,]\d+)*)\s*(%|percent(?:age)?|phần\s+trăm|million|billion|thousand|triệu|tỷ|tỉ|nghìn|milliseconds?|mili\s+giây|ms|gb|tb|mhz|ghz|hours?|giờ|days?|ngày|weeks?|tuần|months?|tháng|years?)?\s*(USD|EUR|GBP)?/giu;
   for (const match of value.matchAll(pattern)) {
     const currency =
       match[4]?.toLowerCase() ??
@@ -114,7 +133,8 @@ function numericClaims(value: string): Set<string> {
       .replace(',', '.')
       .replace(/(?<=\d)\.(?=\d{3}(?:\D|$))/g, '');
     const unit = match[3]
-      ? (unitAliases[match[3].toLowerCase()] ?? match[3].toLowerCase())
+      ? (unitAliases[match[3].toLowerCase().replace(/\s+/g, ' ')] ??
+        match[3].toLowerCase())
       : '';
     claims.add(`${number}|${unit}|${currency}`);
   }
@@ -132,6 +152,7 @@ function parseLocale(
   value: unknown,
   level: 'rich' | 'limited',
   evidenceById: Map<string, BriefEvidenceContext['evidence'][number]>,
+  locale: 'en' | 'vi',
 ): LocalizedBriefV2 {
   if (!value || typeof value !== 'object') invalidBrief();
   const item = value as Record<string, unknown>;
@@ -147,15 +168,24 @@ function parseLocale(
     invalidBrief();
   const feedWords = wordCount(item.feedSummary);
   const summaryWords = wordCount(item.summary);
-  if (feedWords < (level === 'rich' ? 35 : 1) || feedWords > 60) invalidBrief();
-  if (summaryWords < (level === 'rich' ? 120 : 1) || summaryWords > 220)
-    invalidBrief();
-  if (!Array.isArray(item.keyPoints)) invalidBrief();
+  if (feedWords < (level === 'rich' ? 25 : 1) || feedWords > 60) invalidBrief();
+  // Vietnamese uses spaces between syllables as well as words. Give an
+  // equivalent translation enough space instead of forcing it to drop facts.
+  const maximumSummaryWords = locale === 'vi' ? 360 : 220;
   if (
-    item.keyPoints.length < (level === 'rich' ? 3 : 1) ||
-    item.keyPoints.length > 5
+    summaryWords < (level === 'rich' ? 120 : 1) ||
+    summaryWords > maximumSummaryWords
   )
     invalidBrief();
+  // A longer headline/preview repeated verbatim is still not a detailed brief.
+  if (
+    summaryWords <= Math.max(wordCount(item.title), feedWords) ||
+    !addsInformation(item.summary, item.title) ||
+    !addsInformation(item.summary, item.feedSummary)
+  )
+    invalidBrief();
+  if (!Array.isArray(item.keyPoints)) invalidBrief();
+  if (item.keyPoints.length < 3 || item.keyPoints.length > 5) invalidBrief();
 
   const keyPoints = item.keyPoints.map(
     (raw): LocalizedBriefV2['keyPoints'][number] => {
@@ -187,12 +217,22 @@ function parseLocale(
     },
   );
 
-  const allEvidence = [...evidenceById.values()]
-    .map((item) => item.text)
+  if (
+    new Set(keyPoints.map((point) => normalizedCopy(point.text))).size !==
+    keyPoints.length
+  )
+    invalidBrief();
+
+  // Only cited chunks become reader-visible links. Detail statistics must be
+  // supported by those linked sources, not an unlinked part of the packet.
+  const citedEvidence = [
+    ...new Set(keyPoints.flatMap((point) => point.evidenceIds)),
+  ]
+    .map((id) => evidenceById.get(id)!.text)
     .join(' ');
   assertClaimsSupported(
     `${item.title} ${item.feedSummary} ${item.summary}`,
-    allEvidence,
+    citedEvidence,
   );
   return {
     title: item.title.trim(),
@@ -228,8 +268,8 @@ export function validateBriefV2(
   const evidenceById = new Map(context.evidence.map((item) => [item.id, item]));
   if (evidenceById.size !== context.evidence.length) invalidEvidence();
 
-  const en = parseLocale(data.en, context.evidenceLevel, evidenceById);
-  const vi = parseLocale(data.vi, context.evidenceLevel, evidenceById);
+  const en = parseLocale(data.en, context.evidenceLevel, evidenceById, 'en');
+  const vi = parseLocale(data.vi, context.evidenceLevel, evidenceById, 'vi');
   const enClaims = numericClaims(
     `${en.title} ${en.feedSummary} ${en.summary} ${en.keyPoints.map((point) => point.text).join(' ')}`,
   );

@@ -22,6 +22,51 @@ test('limited V2 remains structured without requiring rich-length copy', () => {
   assert.equal(articleContent({ title: 'RSS', summary: null, translations }, 'vi').evidenceLevel, 'limited');
 });
 
+test('V2 EN to VI to EN preserves detailed copy, statistics and source links', () => {
+  const translations = {
+    schemaVersion: 2,
+    en: {
+      title: 'Acme reports lower processing cost',
+      feedSummary: 'Acme reports a 32% processing cost reduction in its benchmark.',
+      summary: 'According to Acme, processing cost fell by 32% on its internal benchmark.\n\nThe report gives no independent verification or rollout schedule.',
+      keyPoints: [
+        { text: 'Acme reports a 32% cost reduction.', evidenceIds: ['E1'] },
+        { text: 'The benchmark was internal.', evidenceIds: ['E1'] },
+        { text: 'Independent verification was not supplied.', evidenceIds: ['E2'] },
+      ],
+    },
+    vi: {
+      title: 'Acme công bố chi phí xử lý giảm',
+      feedSummary: 'Acme công bố chi phí xử lý giảm 32% trong phép đo của công ty.',
+      summary: 'Theo Acme, chi phí xử lý giảm 32% trong phép đo nội bộ.\n\nBáo cáo chưa cung cấp kiểm chứng độc lập hoặc lịch triển khai.',
+      keyPoints: [
+        { text: 'Acme công bố chi phí giảm 32%.', evidenceIds: ['E1'] },
+        { text: 'Phép đo được thực hiện nội bộ.', evidenceIds: ['E1'] },
+        { text: 'Chưa cung cấp kiểm chứng độc lập.', evidenceIds: ['E2'] },
+      ],
+    },
+    evidence: [
+      { id: 'E1', sourceId: 1, sourceName: 'Acme', sourceUrl: 'https://acme.example/benchmark' },
+      { id: 'E2', sourceId: 2, sourceName: 'Tech Desk', sourceUrl: 'https://tech.example/report' },
+    ],
+    evidenceLevel: 'rich',
+  };
+  const article = { title: 'RSS', summary: 'RSS excerpt', translations };
+  for (const locale of ['en', 'vi', 'en']) {
+    const content = articleContent(article, locale);
+    for (const field of ['title', 'feedSummary', 'summary', 'keyPoints']) {
+      assert.deepEqual(content[field], translations[locale][field]);
+    }
+    assert.match(content.summary, /32%/);
+    assert.match(content.summary, /\n\n/);
+    for (const point of content.keyPoints) {
+      const links = content.evidence.filter((source) => point.evidenceIds.includes(source.id));
+      assert.ok(links.length > 0);
+      assert.ok(links.every((source) => safeHttpUrl(source.sourceUrl)));
+    }
+  }
+});
+
 test('source links only allow HTTP and HTTPS', () => {
   assert.equal(safeHttpUrl('https://source.example/story'), 'https://source.example/story');
   assert.equal(safeHttpUrl('javascript:alert(1)'), undefined);

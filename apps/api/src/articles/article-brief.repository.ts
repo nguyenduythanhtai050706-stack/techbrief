@@ -9,7 +9,7 @@ export interface BriefInput {
   input_hash: string;
 }
 export const BRIEF_SCHEMA_VERSION = 2;
-export const BRIEF_PROMPT_VERSION = 'day-16-v2';
+export const BRIEF_PROMPT_VERSION = 'day-17-v2';
 const inputHash = `md5(
   article.title || E'\\n' ||
   COALESCE((

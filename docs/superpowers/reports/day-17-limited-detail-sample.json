@@ -1,0 +1,78 @@
+{
+  "fixtureOnly": true,
+  "notRealNews": true,
+  "promptVersion": "day-17-v2",
+  "sourceText": "Volta Labs previewed a battery prototype. No specifications or availability details were supplied in the feed.",
+  "brief": {
+    "schemaVersion": 2,
+    "en": {
+      "title": "Volta Labs previews a battery prototype",
+      "feedSummary": "Volta Labs previewed a new battery prototype, though the supplied source lacks any technical specifications or information regarding product availability.",
+      "summary": "Volta Labs previewed a battery prototype according to the supplied source. The provided text contains no specifications or availability details about the prototype. The source does not supply any further background, technical details, or impact.",
+      "keyPoints": [
+        {
+          "text": "Volta Labs previewed a battery prototype.",
+          "evidenceIds": [
+            "E1"
+          ]
+        },
+        {
+          "text": "The supplied source does not provide specifications.",
+          "evidenceIds": [
+            "E2"
+          ]
+        },
+        {
+          "text": "The supplied source does not provide availability details.",
+          "evidenceIds": [
+            "E2"
+          ]
+        }
+      ]
+    },
+    "vi": {
+      "title": "Volta Labs giới thiệu trước nguyên mẫu pin",
+      "feedSummary": "Volta Labs đã giới thiệu trước một nguyên mẫu pin, mặc dù nguồn tin được cung cấp không có thông tin chi tiết về kỹ thuật hay thời điểm thương mại hóa.",
+      "summary": "Volta Labs đã giới thiệu trước một nguyên mẫu pin theo nguồn tin được cung cấp. Văn bản được cung cấp hoàn toàn không chứa thông tin chi tiết về thông số kỹ thuật hay tình trạng sẵn có của nguyên mẫu này. Nguồn tin cũng không cung cấp thêm bất kỳ bối cảnh, chi tiết kỹ thuật hay tác động thực tế nào khác.",
+      "keyPoints": [
+        {
+          "text": "Volta Labs đã giới thiệu trước một nguyên mẫu pin.",
+          "evidenceIds": [
+            "E1"
+          ]
+        },
+        {
+          "text": "Nguồn tin được cung cấp không cung cấp thông số kỹ thuật.",
+          "evidenceIds": [
+            "E2"
+          ]
+        },
+        {
+          "text": "Nguồn tin được cung cấp không cung cấp thông tin chi tiết về tính có sẵn.",
+          "evidenceIds": [
+            "E2"
+          ]
+        }
+      ]
+    },
+    "evidence": [
+      {
+        "id": "E1",
+        "sourceId": 1,
+        "sourceName": "Synthetic battery fixture",
+        "sourceUrl": "https://volta.example/prototype"
+      },
+      {
+        "id": "E2",
+        "sourceId": 1,
+        "sourceName": "Synthetic battery fixture",
+        "sourceUrl": "https://volta.example/prototype"
+      }
+    ],
+    "categories": [
+      "Products",
+      "Technology"
+    ],
+    "evidenceLevel": "limited"
+  }
+}
